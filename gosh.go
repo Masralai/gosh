@@ -10,6 +10,7 @@ import (
 	"strings"
 	//  "os/exec"
 	// "path/filepath"
+	//"net/http"
 	"github.com/urfave/cli/v3"
 )
 
@@ -67,8 +68,19 @@ func main() {
 				{
 					Name:  "echo",
 					Usage: "Display Text",
+					Flags: []cli.Flag{
+						&cli.BoolFlag{
+							Name:  "help",
+							Aliases: []string{"h","help"},
+							Usage: "Display Text",
+						},
+						
+					},
 					Action: func(ctx context.Context, c *cli.Command) error {
 						fmt.Println(c.Args().Get(0))
+						if c.Bool("help"){
+							fmt.Println("echo hello")
+						}
 						return nil
 					},
 				},
@@ -133,7 +145,9 @@ func main() {
 					},
 					Action: func(ctx context.Context, c *cli.Command) error {
 						if c.Args().Len()==0 {
-							cli.Exit("no file specified",14)
+							// return cli.Exit("no file specified",14)
+							fmt.Println("No file specified")
+							return nil
 						}
 						if c.Bool("rf") {
 							fmt.Println("are you sure you want to trigger recursive deletion ? y/n")
@@ -208,6 +222,8 @@ func main() {
 					},
 				},
 
+				
+
 				//////////////////////////////////////////////////////////////////////////////
 				//system monitoring
 				{
@@ -250,6 +266,15 @@ func main() {
 
 			},
 
+				//////////////////////////////////////////////////////////////////////////////
+				//Text Processing
+
+				//////////////////////////////////////////////////////////////////////////////
+				//Networking
+
+
+
+				
 		Flags: []cli.Flag{
             &cli.BoolFlag{
                 Name:  "ginger-crouton",
