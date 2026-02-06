@@ -20,10 +20,11 @@ import (
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/process"
 	"github.com/urfave/cli/v3"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-
+	godotenv.Load()
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("\033[H\033[2J") //clears terminal
 	fmt.Println(`
@@ -42,7 +43,7 @@ func main() {
 			Version: "v1.2.0",
 			Authors: []any{
 				"Name:  Devdeep Paul",
-				"Email: devv.v4828@gmail.com",
+				"Email: " + os.Getenv("DEV_MAIL"),
 			},
 			Usage:     "A cozy, cross-platform shell environment built with Go.",
 			UsageText: "cli [command] [arguments]",
