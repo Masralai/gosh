@@ -8,14 +8,21 @@ import (
 	"os"
 	"runtime"
 	"strings"
-	//  "os/exec"
+
+	// "os/exec"
 	// "path/filepath"
 	//"net/http"
+
+	// "github.com/shirou/gopsutil"
+	"github.com/shirou/gopsutil/disk"
+	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/mem"
+	"github.com/shirou/gopsutil/process"
 	"github.com/urfave/cli/v3"
 )
 
 func main() {
-	
+
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("\033[H\033[2J") //clears terminal
 	fmt.Println(`
@@ -70,15 +77,14 @@ func main() {
 					Usage: "Display Text",
 					Flags: []cli.Flag{
 						&cli.BoolFlag{
-							Name:  "help",
-							Aliases: []string{"h","help"},
-							Usage: "Display Text",
+							Name:    "help",
+							Aliases: []string{"h", "help"},
+							Usage:   "Display Text",
 						},
-						
 					},
 					Action: func(ctx context.Context, c *cli.Command) error {
 						fmt.Println(c.Args().Get(0))
-						if c.Bool("help"){
+						if c.Bool("help") {
 							fmt.Println("echo hello")
 						}
 						return nil
@@ -137,41 +143,41 @@ func main() {
 					//cli rm rf example
 					Flags: []cli.Flag{
 						&cli.BoolFlag{
-							Name:  "rf",
-							Aliases: []string{"rf","r"},
-							Usage: "recursive delete",
+							Name:    "rf",
+							Aliases: []string{"rf", "r"},
+							Usage:   "recursive delete",
 						},
-						
 					},
 					Action: func(ctx context.Context, c *cli.Command) error {
-						if c.Args().Len()==0 {
+						if c.Args().Len() == 0 {
 							// return cli.Exit("no file specified",14)
 							fmt.Println("No file specified")
 							return nil
 						}
 						if c.Bool("rf") {
 							fmt.Println("are you sure you want to trigger recursive deletion ? y/n")
-						
-							response:=""
+
+							response := ""
 							fmt.Scanln(&response)
-							if (response == "y" || response== "Y"){
+							if response == "y" || response == "Y" {
 								os.RemoveAll(c.Args().Get(0))
-							}else{fmt.Println("Aborted")}
-							
-						}else{
+							} else {
+								fmt.Println("Aborted")
+							}
+
+						} else {
 							// for i:=0 ;i<len(c.Args().Slice());i++ {
 							// 		os.Remove(c.Args().Get(i))
 							// }
-							for _,filename:=range c.Args().Slice() {
+							for _, filename := range c.Args().Slice() {
 								err := os.Remove(filename)
-								if err!=nil{
-									fmt.Printf("Error deleting %s: %v\n",filename,err)
+								if err != nil {
+									fmt.Printf("Error deleting %s: %v\n", filename, err)
 								}
 							}
 						}
 						return nil
 					},
-					
 				},
 
 				{
@@ -205,8 +211,8 @@ func main() {
 					Name:  "cat",
 					Usage: "read contents",
 					Action: func(ctx context.Context, c *cli.Command) error {
-						data,err:=os.ReadFile(c.Args().Get(0))
-						if err!=nil {
+						data, err := os.ReadFile(c.Args().Get(0))
+						if err != nil {
 							log.Fatal(err)
 						}
 						os.Stdout.Write(data)
@@ -222,77 +228,116 @@ func main() {
 					},
 				},
 
-				
-
 				//////////////////////////////////////////////////////////////////////////////
 				//system monitoring
 				{
 					Name:  "ps",
 					Usage: "process status",
 					Action: func(ctx context.Context, c *cli.Command) error {
-						fmt.Println(os.Getpid())
+						fmt.Println(os.ReadDir("/proc"))
 						return nil
 					},
 				},
 				{
 					Name:  "uptime",
 					Usage: "System Runtime",
+					Action: func(ctx context.Context, c *cli.Command) error {
+						h, _ := host.Uptime()
+						fmt.Printf("%f min\n", float64(h/60))
+						return nil
+					},
 				},
 				{
 					Name:  "sys",
 					Usage: "System info",
 					Action: func(ctx context.Context, c *cli.Command) error {
-						fmt.Println("number of available cpu:", runtime.NumCPU(), "\n", "go version:", runtime.Version())
+
+						o, _ := os.Hostname()
+						fmt.Println("hostname:", o)
+						fmt.Println("number of available cpu:", runtime.NumCPU())
+						fmt.Println(host.PlatformInformation())
+						fmt.Println(host.KernelVersion())
+						fmt.Println(host.KernelArch())
+						fmt.Println("go version:", runtime.Version())
+						p, _ := process.Pids()
+						fmt.Println("processes running", p)
+
 						return nil
 					},
 				},
 				{
-					Name:  "free",
+					Name:  "mem",
 					Usage: "Display Free and Used Memory",
 					Action: func(ctx context.Context, c *cli.Command) error {
-						fmt.Println()
+						v, _ := mem.VirtualMemory()
+						fmt.Printf("Total: %v, Free: %v , UsedPercent: %f%%\n", v.Total/1024/1024, v.Free/1024/1024, v.UsedPercent)
+						fmt.Println(v.String())
+
 						return nil
 					},
 				},
-				// {
-				// 	Name:  "kill",
-				// 	Usage: "Terminate Processes",
-				// 	Action: func( ctx context.Context, c * cli.Command)error{
-				// 		os.Kill(c.Args().Get(0))
-				// 		return nil
-				// 	},
+				{
+					Name:  "kill",
+					Usage: "Terminate Processes suing process id",
+					Action: func(ctx context.Context, c *cli.Command) error {
+						ps, err := process.Processes()
+						if err != nil {
+							return err
+						}
+						for _, p := range ps {
+							n, err := p.Name()
+							if err != nil {
+								return err
+							}
+							if n == c.Args().Get(0) {
+								return p.Kill()
+							}
+							return fmt.Errorf("process not found")
+						}
+						return nil
+					},
+				},
+				{
+					Name:  "disk",
+					Usage: "Display disk used",
+					Action: func(ctx context.Context, c *cli.Command) error {
+						if c.Args().Len() == 0 {
+							println("provide filesystem path such as /")
+						} else {
 
-				// },
-
+							d, _ := disk.Usage(c.Args().Get(0))
+							fmt.Printf("Total: %dMB, Free: %dMB, UsedPercent: %f%%\n", d.Total/1024/1024, d.Free/1024/1024, d.UsedPercent)
+							fmt.Println("disk usage:", d.String())
+						}
+						return nil
+					},
+				},
 			},
 
-				//////////////////////////////////////////////////////////////////////////////
-				//Text Processing
+			//////////////////////////////////////////////////////////////////////////////
+			//Text Processing
 
-				//////////////////////////////////////////////////////////////////////////////
-				//Networking
+			//////////////////////////////////////////////////////////////////////////////
+			//Networking
 
-
-
-				
-		Flags: []cli.Flag{
-            &cli.BoolFlag{
-                Name:  "ginger-crouton",
-                Usage: "is it in the soup?",
-            },
-        },
-        // Action: func(ctx context.Context, cmd *cli.Command) error {
-        //     if !cmd.Bool("ginger-crouton") {
-        //         return cli.Exit("Ginger croutons are not in the soup", 86)
-        //     }
-        //     return nil
-        // },
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-            if !cmd.Bool("ginger-crouton") {
-                fmt.Println("invalid command")
-            }
-            return nil
-        },
+			Flags: []cli.Flag{
+				&cli.BoolFlag{
+					Name:  "ginger-crouton",
+					Usage: "is it in the soup?",
+				},
+			},
+			// Action: func(ctx context.Context, cmd *cli.Command) error {
+			//     if !cmd.Bool("ginger-crouton") {
+			//         return cli.Exit("Ginger croutons are not in the soup", 86)
+			//     }
+			//     return nil
+			// },
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				if !cmd.Bool("ginger-crouton") {
+					fmt.Println("invalid command")
+				}
+				return nil
+			},
 		}
 		if err := root.Run(context.Background(), strings.Fields(scanner.Text())); err != nil { //ignores excess spaces and tabs
 			log.Fatal(err)
