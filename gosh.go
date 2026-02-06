@@ -50,6 +50,14 @@ func main() {
 			//basic commands
 			Commands: []*cli.Command{
 				{
+					Name:            "cli",
+					SkipFlagParsing: true,
+					Action: func(ctx context.Context, c *cli.Command) error {
+						fmt.Println("cli", c.Args())
+						return nil
+					},
+				},
+				{
 					Name:      "boom",
 					Usage:     "make an explosive entrance",
 					UsageText: "cli boom",
@@ -62,7 +70,20 @@ func main() {
 					Name:      "echo",
 					Usage:     "Display Text",
 					UsageText: "cli echo <text>",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:  "n",
+							Usage: "Don't add a new line at the end",
+						},
+						&cli.StringFlag{
+							Name:  "e",
+							Usage: "Allow special characters like \n for new lines",
+						},
+					},
 					Action: func(ctx context.Context, c *cli.Command) error {
+						if c.Args().Len() == 0 {
+							return fmt.Errorf("usage: echo <text>")
+						}
 						fmt.Println(c.Args().Get(0))
 						return nil
 					},
@@ -109,6 +130,20 @@ func main() {
 					Name:      "ls",
 					Usage:     "List Directory Contents",
 					UsageText: "cli ls",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:  "R",
+							Usage: "List subdirectories recursively",
+						},
+						&cli.StringFlag{
+							Name:  "S",
+							Usage: "Sort by file size",
+						},
+						&cli.StringFlag{
+							Name:  "a",
+							Usage: "Include hidden files",
+						},
+					},
 					Action: func(context.Context, *cli.Command) error {
 						rd, err := os.ReadDir("./")
 						if err != nil {
@@ -218,6 +253,26 @@ func main() {
 					},
 				},
 				{
+					Name:      "cp",
+					Usage:     "Copy Files and Directories within",
+					UsageText: "cli cp <src> <dest>",
+
+					Action: func(ctx context.Context, c *cli.Command) error {
+						if c.Args().Len() < 2 {
+							return fmt.Errorf("usage: cp <source> <destination>")
+						}
+						src := c.Args().Get(0)
+						dest := c.Args().Get(1)
+						srcDir := os.DirFS(src)
+						err := os.CopyFS(dest, srcDir)
+						if err != nil {
+							return fmt.Errorf("failed to copy %q :%v", src, err)
+						}
+						fmt.Printf("copied %q to %q\n", src, dest)
+						return nil
+					},
+				},
+				{
 					Name:      "dir",
 					Usage:     "directory contents",
 					UsageText: "cli dir <path>",
@@ -238,6 +293,20 @@ func main() {
 					Name:      "cat",
 					Usage:     "read contents",
 					UsageText: "cli cat <filename>",
+					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:  "n",
+							Usage: "Add numbers to each line",
+						},
+						&cli.StringFlag{
+							Name:  "b",
+							Usage: "Add numbers only to lines with text",
+						},
+						&cli.StringFlag{
+							Name:  "s",
+							Usage: "Remove extra empty lines",
+						},
+					},
 					Action: func(ctx context.Context, c *cli.Command) error {
 						data, err := os.ReadFile(c.Args().Get(0))
 						if err != nil {
@@ -255,7 +324,7 @@ func main() {
 					Action: func(ctx context.Context, c *cli.Command) error {
 						s, err := os.Stat(c.Args().Get(0))
 						if err != nil {
-							return fmt.Errorf("failed to get file info:%v",err)
+							return fmt.Errorf("failed to get file info:%v", err)
 						}
 						fmt.Printf("File: %s\n", s.Name())
 						fmt.Printf("Size: %d bytes\n", s.Size())
@@ -293,7 +362,7 @@ func main() {
 						if err != nil {
 							return fmt.Errorf("failed to fetch system uptime: %v", err)
 						}
-						fmt.Printf("%f min\n", float64(h/60))
+						fmt.Printf("%f min\n", float64(h)/60)
 						return nil
 					},
 				},
