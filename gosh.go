@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"log"
+	// "log"
 	"os"
 	"runtime"
 	"strings"
@@ -14,6 +14,7 @@ import (
 	//"net/http"
 
 	// "github.com/shirou/gopsutil"
+	// "github.com/tklauser/go-sysconf"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
@@ -62,9 +63,7 @@ func main() {
 					Usage:     "Display Text",
 					UsageText: "cli echo <text>",
 					Action: func(ctx context.Context, c *cli.Command) error {
-
 						fmt.Println(c.Args().Get(0))
-
 						return nil
 					},
 				},
@@ -75,7 +74,11 @@ func main() {
 
 					Action: func(ctx context.Context, c *cli.Command) error {
 						os.Chdir(c.Args().Get(0))
-						fmt.Println(os.Getwd())
+						wd, err := os.Getwd()
+						if err != nil {
+							return fmt.Errorf("failed to change Directory : %v", err)
+						}
+						fmt.Println(wd)
 						return nil
 					},
 				},
@@ -84,7 +87,12 @@ func main() {
 					Usage:     "Print Working Directory",
 					UsageText: "cli pwd",
 					Action: func(ctx context.Context, c *cli.Command) error {
-						fmt.Println(os.Getwd())
+						wd, err := os.Getwd()
+						if err != nil {
+							return fmt.Errorf("failed to Print Working Directory : %v", err)
+						}
+						fmt.Println(wd)
+
 						return nil
 					},
 				},
@@ -102,7 +110,12 @@ func main() {
 					Usage:     "List Directory Contents",
 					UsageText: "cli ls",
 					Action: func(context.Context, *cli.Command) error {
-						fmt.Println(os.ReadDir("./"))
+						rd, err := os.ReadDir("./")
+						if err != nil {
+							return fmt.Errorf("failed to List Directory Contents: %v", err)
+						}
+						fmt.Println(rd)
+
 						return nil
 					},
 				},
@@ -111,7 +124,14 @@ func main() {
 					Usage:     "Make Directories",
 					UsageText: "cli mkdir <path>",
 					Action: func(ctx context.Context, c *cli.Command) error {
-						os.Mkdir(c.Args().Get(0), 64)
+						if c.Args().Len() == 0 {
+							return fmt.Errorf("usage: mkdir <pathname>")
+						}
+						err := os.Mkdir(c.Args().Get(0), 64)
+						if err != nil {
+							return fmt.Errorf("failed to created directory: %v", err)
+						}
+						fmt.Printf("directory created %s", c.Args().Get(0))
 						return nil
 					},
 				},
@@ -130,8 +150,8 @@ func main() {
 					Action: func(ctx context.Context, c *cli.Command) error {
 						if c.Args().Len() == 0 {
 							// return cli.Exit("no file specified",14)
-							fmt.Println("No file specified")
-							return nil
+							return fmt.Errorf("usage: rm <filename> || usage: rm -rf <filename>")
+
 						}
 						if c.Bool("rf") {
 							fmt.Println("are you sure you want to trigger recursive deletion ? y/n")
@@ -151,7 +171,7 @@ func main() {
 							for _, filename := range c.Args().Slice() {
 								err := os.Remove(filename)
 								if err != nil {
-									fmt.Printf("Error deleting %s: %v\n", filename, err)
+									return fmt.Errorf("Error deleting %s: %v\n", filename, err)
 								}
 							}
 						}
@@ -165,17 +185,35 @@ func main() {
 					UsageText: "cli touch <filename>",
 
 					Action: func(ctx context.Context, c *cli.Command) error {
-						os.Create(c.Args().Get(0))
+						if c.Args().Len() == 0 {
+							return fmt.Errorf("usage: touch <filename>")
+						}
+						_, err := os.Create(c.Args().Get(0))
+						if err != nil {
+							return fmt.Errorf("failed to create file :%v", err)
+						}
+						fmt.Printf("file created : %s\n", c.Args().Get(0))
+
 						return nil
 					},
 				},
 				{
 					Name:      "mv",
 					Usage:     "move/rename file",
-					UsageText: "cli rn <filename> <filename>",
+					UsageText: "cli mv <src> <dest>",
 
 					Action: func(ctx context.Context, c *cli.Command) error {
-						os.Rename(c.Args().Get(0), c.Args().Get(1))
+						if c.Args().Len() < 2 {
+							return fmt.Errorf("usage: mv <source> <destination>")
+						}
+						src := c.Args().Get(0)
+						dest := c.Args().Get(1)
+						err := os.Rename(src, dest)
+						if err != nil {
+							return fmt.Errorf("failed to move %q :%v", src, err)
+						}
+
+						fmt.Printf("moved %q to %q\n", src, dest)
 						return nil
 					},
 				},
@@ -185,7 +223,14 @@ func main() {
 					UsageText: "cli dir <path>",
 
 					Action: func(ctx context.Context, c *cli.Command) error {
-						fmt.Println(os.ReadDir(c.Args().Get(0)))
+						if c.Args().Len() == 0 {
+							return fmt.Errorf("usage: dir <pathname>")
+						}
+						dir, err := os.ReadDir(c.Args().Get(0))
+						if err != nil {
+							return fmt.Errorf("failed to display dir contents: %v", err)
+						}
+						fmt.Println(dir)
 						return nil
 					},
 				},
@@ -196,7 +241,8 @@ func main() {
 					Action: func(ctx context.Context, c *cli.Command) error {
 						data, err := os.ReadFile(c.Args().Get(0))
 						if err != nil {
-							log.Fatal(err)
+							// log.Fatal(err)
+							return fmt.Errorf("failed to read file contents: %v", err)
 						}
 						os.Stdout.Write(data)
 						return nil
@@ -209,17 +255,16 @@ func main() {
 					Action: func(ctx context.Context, c *cli.Command) error {
 						s, err := os.Stat(c.Args().Get(0))
 						if err != nil {
-							return err
-						} else {
-							fmt.Printf("File: %s\n", s.Name())
-							fmt.Printf("Size: %d bytes\n", s.Size())
-							// On Windows, Go’s os.FileMode doesn't strictly report the "Execute" bit because Windows determines
-							// what is executable based on the file extension (.exe, .bat), not a permission bit like Linux does.
-							// In Go's eyes on Windows, most files show up as rw.
-							fmt.Printf("Read(r),Write(w),Execute(x) | Mode: %s\n", s.Mode())
-							fmt.Printf("Last Modified: %s\n", s.ModTime().Format("2006-01-02 15:04:05"))
-							fmt.Printf("Directory?: %v\n", s.IsDir())
+							return fmt.Errorf("failed to get file info:%v",err)
 						}
+						fmt.Printf("File: %s\n", s.Name())
+						fmt.Printf("Size: %d bytes\n", s.Size())
+						// On Windows, Go’s os.FileMode doesn't strictly report the "Execute" bit because Windows determines
+						// what is executable based on the file extension (.exe, .bat), not a permission bit like Linux does.
+						// In Go's eyes on Windows, most files show up as rw.
+						fmt.Printf("Read(r),Write(w),Execute(x) | Mode: %s\n", s.Mode())
+						fmt.Printf("Last Modified: %s\n", s.ModTime().Format("2006-01-02 15:04:05"))
+						fmt.Printf("Directory?: %v\n", s.IsDir())
 
 						return nil
 					},
@@ -231,7 +276,11 @@ func main() {
 					Name:  "ps",
 					Usage: "process status",
 					Action: func(ctx context.Context, c *cli.Command) error {
-						fmt.Println(os.ReadDir("/proc"))
+						ps, err := os.ReadDir("/proc")
+						if err != nil {
+							return fmt.Errorf("failed to show process status: %v", err)
+						}
+						fmt.Println(ps)
 						return nil
 					},
 				},
@@ -240,7 +289,10 @@ func main() {
 					Usage:     "System Uptime",
 					UsageText: "cli ut",
 					Action: func(ctx context.Context, c *cli.Command) error {
-						h, _ := host.Uptime()
+						h, err := host.Uptime()
+						if err != nil {
+							return fmt.Errorf("failed to fetch system uptime: %v", err)
+						}
 						fmt.Printf("%f min\n", float64(h/60))
 						return nil
 					},
@@ -251,15 +303,34 @@ func main() {
 					UsageText: "cli sys",
 					Action: func(ctx context.Context, c *cli.Command) error {
 
-						o, _ := os.Hostname()
-						fmt.Println("hostname:", o)
+						hs, hs_err := os.Hostname()
+						if hs_err != nil {
+							return fmt.Errorf("failed to get system hostname: %v", hs_err)
+						}
+						fmt.Println("hostname:", hs)
+
 						fmt.Println("number of available cpu:", runtime.NumCPU())
 						fmt.Println(host.PlatformInformation())
-						fmt.Println(host.KernelVersion())
-						fmt.Println(host.KernelArch())
+
+						kv, kv_err := host.KernelVersion()
+						if kv_err != nil {
+							return fmt.Errorf("failed to get Kernel Version: %v", kv_err)
+						}
+						fmt.Println(kv)
+
+						ka, ka_err := host.KernelArch()
+						if ka_err != nil {
+							return fmt.Errorf("failed to get Kernel Version: %v", ka_err)
+						}
+						fmt.Println(ka)
+
 						fmt.Println("go version:", runtime.Version())
-						p, _ := process.Pids()
-						fmt.Println("processes running", p)
+
+						ps, ps_err := process.Pids()
+						if ps_err != nil {
+							return fmt.Errorf("failed to system hostname: %v", ps_err)
+						}
+						fmt.Println("processes running", ps)
 
 						return nil
 					},
@@ -269,7 +340,10 @@ func main() {
 					Usage:     "Display Free and Used Memory",
 					UsageText: "cli mu",
 					Action: func(ctx context.Context, c *cli.Command) error {
-						v, _ := mem.VirtualMemory()
+						v, err := mem.VirtualMemory()
+						if err != nil {
+							return fmt.Errorf("failed to display memmory usage:%v", err)
+						}
 						fmt.Printf("Total: %v, Free: %v , UsedPercent: %f%%\n", v.Total/1024/1024, v.Free/1024/1024, v.UsedPercent)
 						fmt.Println(v.String())
 
@@ -282,13 +356,16 @@ func main() {
 					UsageText: "cli du <path>",
 					Action: func(ctx context.Context, c *cli.Command) error {
 						if c.Args().Len() == 0 {
-							println("provide filesystem path such as /")
-						} else {
-
-							d, _ := disk.Usage(c.Args().Get(0))
-							fmt.Printf("Total: %dMB, Free: %dMB, UsedPercent: %f%%\n", d.Total/1024/1024, d.Free/1024/1024, d.UsedPercent)
-							fmt.Println("disk usage:", d.String())
+							return fmt.Errorf("usage: du <pathname>")
 						}
+
+						d, err := disk.Usage(c.Args().Get(0))
+						if err != nil {
+							return fmt.Errorf("failed to display disk used:%v", err)
+						}
+						fmt.Printf("Total: %dMB, Free: %dMB, UsedPercent: %f%%\n", d.Total/1024/1024, d.Free/1024/1024, d.UsedPercent)
+						fmt.Println("disk usage:", d.String())
+
 						return nil
 					},
 				},
@@ -299,7 +376,7 @@ func main() {
 					Action: func(ctx context.Context, c *cli.Command) error {
 						ps, err := process.Processes()
 						if err != nil {
-							return err
+							return fmt.Errorf("Failed to terminate process:%v", err)
 						}
 						for _, p := range ps {
 							n, err := p.Name()
@@ -324,7 +401,7 @@ func main() {
 					},
 				},
 				{
-					Name:      "cli head",
+					Name:      "head",
 					Usage:     "Display the beginning of a file",
 					UsageText: "cli head <filename>",
 					Action: func(ctx context.Context, c *cli.Command) error {
@@ -374,7 +451,8 @@ func main() {
 			},
 		}
 		if err := root.Run(context.Background(), strings.Fields(scanner.Text())); err != nil { //ignores excess spaces and tabs
-			log.Fatal(err)
+			// log.Fatal(err)
+			fmt.Printf("GoSh error:%v\n", err)
 		}
 
 	}
