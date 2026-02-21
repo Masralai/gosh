@@ -3,6 +3,7 @@ module github.com/Masralai/go-cli
 go 1.24.1
 
 require (
+	github.com/andelf/go-curl v0.0.0-20250312014544-8683354c1636 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect

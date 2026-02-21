@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 
 	// "log"
+	"archive/zip"
 	"os"
 	"regexp"
 	"runtime"
@@ -16,9 +18,11 @@ import (
 	// "net/http"
 	"net"
 	"time"
+
 	// "github.com/shirou/gopsutil"
 	// "github.com/tklauser/go-sysconf"
 	//"github.com/joho/godotenv"
+	// curl "github.com/andelf/go-curl"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
@@ -506,8 +510,8 @@ func main() {
 						}
 						if c.Bool("r") {
 
-							for scanner.Scan() { //defer before this func since it has hidden scanner.Err()
-								line := scanner.Text() //strips the new line chars from the txt file
+							for scanner.Scan() {
+								line := scanner.Text()
 								if regObj.MatchString(line) {
 									fmt.Printf("%s\n", line)
 								}
@@ -559,8 +563,8 @@ func main() {
 						p := fastping.NewPinger()
 						ra, err := net.ResolveIPAddr("ip4:icmp", c.Args().Get(0))
 						if err != nil {
-							return fmt.Errorf("Failed to resolve IP Address: %v",err)
-							
+							return fmt.Errorf("Failed to resolve IP Address: %v", err)
+
 						}
 						p.AddIPAddr(ra)
 						p.OnRecv = func(addr *net.IPAddr, rtt time.Duration) {
@@ -571,15 +575,67 @@ func main() {
 						}
 						err = p.Run()
 						if err != nil {
-							return fmt.Errorf("Failed to ping :%v",err)
+							return fmt.Errorf("Failed to ping :%v", err)
 						}
 						return nil
 					},
 				},
+				// {
+				// 	Name:      "curl",
+				// 	Usage:     "Transfer a URL",
+				// 	UsageText: "cli curl http://example.com/file.txt",
+				// 	Action: func(ctx context.Context, c *cli.Command) error {
+				// 		easy := curl.EasyInit()
+				// 		defer easy.Cleanup()
+				// 		if easy != nil {
+				// 			easy.Setopt(curl.OPT_URL, c.Args().Get(0))
+				// 			easy.Perform()
+				// 		}
+				// 		return nil
+				// 	},
+				// },
+
+				//////////////////////////////////////////////////////////////////////////////
+				//File Compression
 				{
-					Name:      "curl",
-					Usage:     "Transfer a URL",
-					UsageText: "cli curl http://example.com/file.txt",
+					Name:      "zip",
+					Usage:     "compress file",
+					UsageText: "cli zip <filename>",
+					Action: func(ctx context.Context, c *cli.Command) error {
+						archive,err:=os.Create(c.Args().Get(0)+".zip")
+						if err!=nil{
+							return fmt.Errorf("failed to create zip archive :%v",err)
+						}
+						defer archive.Close()
+						
+						zipWriter :=zip.NewWriter(archive)
+						fmt.Println("opening first file...")
+						f1, err:= os.Open(c.Args().Get(1))
+						if err!=nil{
+							return fmt.Errorf("file error:%v",err)
+						}
+						defer f1.Close()
+						fmt.Println("adding file to the archive...")
+						path:="./"
+						w1,err := zipWriter.Create(path)
+						if err!=nil{
+							return fmt.Errorf("Failed to add file to archive:%v",err)
+						}
+
+						//copy uncompressed file to achive
+						if _,err:=io.Copy(w1,f1); err!=nil{
+							return fmt.Errorf("Failed to copy uncompressed file to achive:%v",err)
+						}
+						/////////////
+						//in progress
+						/////////////
+						return nil
+					},
+				},
+				{
+					Name:      "unzip",
+					Usage:     "Extract from ZIP archive",
+					UsageText: "cli unzip <filename>.zip",
 					Action: func(ctx context.Context, c *cli.Command) error {
 						return nil
 					},
