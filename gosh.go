@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+
 	// "log"
 	"os"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -15,16 +17,16 @@ import (
 
 	// "github.com/shirou/gopsutil"
 	// "github.com/tklauser/go-sysconf"
+	//"github.com/joho/godotenv"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/process"
 	"github.com/urfave/cli/v3"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	godotenv.Load()
+	// godotenv.Load()
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("\033[H\033[2J") //clears terminal
 	fmt.Println(`
@@ -43,7 +45,6 @@ func main() {
 			Version: "v1.2.0",
 			Authors: []any{
 				"Name:  Devdeep Paul",
-				"Email: " + os.Getenv("DEV_MAIL"),
 			},
 			Usage:     "A cozy, cross-platform shell environment built with Go.",
 			UsageText: "cli [command] [arguments]",
@@ -365,6 +366,7 @@ func main() {
 						}
 						fmt.Printf("%f min\n", float64(h)/60)
 						return nil
+
 					},
 				},
 				{
@@ -466,7 +468,65 @@ func main() {
 					Name:      "grep",
 					Usage:     "Search Text Using Patterns",
 					UsageText: "cli grep 'pattern' <filename>",
+					Flags: []cli.Flag{
+						&cli.BoolFlag{
+							Name:  "f",
+							Usage: "Search ignoring case differences (uppercase or lowercase)",
+						},
+						&cli.BoolFlag{
+							Name:  "r",
+							Usage: "recursive grep",
+						},
+						&cli.BoolFlag{
+							Name:  "v",
+							Usage: "Find lines that do not match the pattern",
+						},
+					},
 					Action: func(ctx context.Context, c *cli.Command) error {
+						if c.Args().Len() < 2 {
+							return fmt.Errorf("not enough arguments")
+						}
+
+						filename := c.Args().Get(1)
+						pattern := c.Args().Get(0)
+						regObj, reg_err := regexp.Compile(pattern)
+						if reg_err != nil {
+							return fmt.Errorf("Failed to create regression Object: %v", reg_err)
+						}
+						file, f_err := os.Open(filename)
+						if f_err != nil {
+							return fmt.Errorf("Failed to open file %v", f_err)
+						}
+						defer file.Close()
+						scanner := bufio.NewScanner(file)
+						if c.Bool("f") {
+
+						}
+						if c.Bool("r") {
+							
+							for scanner.Scan() { //defer before this func since it has hidden scanner.Err()
+								line := scanner.Text() //strips the new line chars from the txt file
+								if regObj.MatchString(line) {
+									fmt.Printf("%s\n", line)
+								}
+							}
+						}
+
+						if c.Bool("v") {
+							for scanner.Scan() {
+								line := scanner.Text()
+								if !regObj.MatchString(line) {
+									fmt.Printf("%s\n", line)
+								}
+							}
+						}
+						for scanner.Scan() { //defer before this func since it has hidden scanner.Err()
+							line := scanner.Text() //strips the new line chars from the txt file
+							if regObj.MatchString(line) {
+								fmt.Printf("%s\n", line)
+							}
+						}
+
 						return nil
 					},
 				},
