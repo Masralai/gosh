@@ -13,8 +13,9 @@ import (
 
 	// "os/exec"
 	// "path/filepath"
-	//"net/http"
-
+	// "net/http"
+	"net"
+	"time"
 	// "github.com/shirou/gopsutil"
 	// "github.com/tklauser/go-sysconf"
 	//"github.com/joho/godotenv"
@@ -22,6 +23,7 @@ import (
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/process"
+	"github.com/tatsushid/go-fastping"
 	"github.com/urfave/cli/v3"
 )
 
@@ -375,32 +377,32 @@ func main() {
 					UsageText: "cli sys",
 					Action: func(ctx context.Context, c *cli.Command) error {
 
-						hs, hs_err := os.Hostname()
-						if hs_err != nil {
-							return fmt.Errorf("failed to get system hostname: %v", hs_err)
+						hs, err := os.Hostname()
+						if err != nil {
+							return fmt.Errorf("failed to get system hostname: %v", err)
 						}
 						fmt.Println("hostname:", hs)
 
 						fmt.Println("number of available cpu:", runtime.NumCPU())
 						fmt.Println(host.PlatformInformation())
 
-						kv, kv_err := host.KernelVersion()
-						if kv_err != nil {
-							return fmt.Errorf("failed to get Kernel Version: %v", kv_err)
+						kv, err := host.KernelVersion()
+						if err != nil {
+							return fmt.Errorf("failed to get Kernel Version: %v", err)
 						}
 						fmt.Println(kv)
 
-						ka, ka_err := host.KernelArch()
-						if ka_err != nil {
-							return fmt.Errorf("failed to get Kernel Version: %v", ka_err)
+						ka, err := host.KernelArch()
+						if err != nil {
+							return fmt.Errorf("failed to get Kernel Version: %v", err)
 						}
 						fmt.Println(ka)
 
 						fmt.Println("go version:", runtime.Version())
 
-						ps, ps_err := process.Pids()
-						if ps_err != nil {
-							return fmt.Errorf("failed to system hostname: %v", ps_err)
+						ps, err := process.Pids()
+						if err != nil {
+							return fmt.Errorf("failed to system hostname: %v", err)
 						}
 						fmt.Println("processes running", ps)
 
@@ -489,13 +491,13 @@ func main() {
 
 						filename := c.Args().Get(1)
 						pattern := c.Args().Get(0)
-						regObj, reg_err := regexp.Compile(pattern)
-						if reg_err != nil {
-							return fmt.Errorf("Failed to create regression Object: %v", reg_err)
+						regObj, err := regexp.Compile(pattern)
+						if err != nil {
+							return fmt.Errorf("Failed to create regression Object: %v", err)
 						}
-						file, f_err := os.Open(filename)
-						if f_err != nil {
-							return fmt.Errorf("Failed to open file %v", f_err)
+						file, err := os.Open(filename)
+						if err != nil {
+							return fmt.Errorf("Failed to open file %v", err)
 						}
 						defer file.Close()
 						scanner := bufio.NewScanner(file)
@@ -503,7 +505,7 @@ func main() {
 
 						}
 						if c.Bool("r") {
-							
+
 							for scanner.Scan() { //defer before this func since it has hidden scanner.Err()
 								line := scanner.Text() //strips the new line chars from the txt file
 								if regObj.MatchString(line) {
@@ -554,6 +556,23 @@ func main() {
 					Usage:     "Send Request to Network Hosts",
 					UsageText: "cli ping <hostname>",
 					Action: func(ctx context.Context, c *cli.Command) error {
+						p := fastping.NewPinger()
+						ra, err := net.ResolveIPAddr("ip4:icmp", c.Args().Get(0))
+						if err != nil {
+							return fmt.Errorf("Failed to resolve IP Address: %v",err)
+							
+						}
+						p.AddIPAddr(ra)
+						p.OnRecv = func(addr *net.IPAddr, rtt time.Duration) {
+							fmt.Printf("IP Addr: %s receive, RTT: %v\n", addr.String(), rtt)
+						}
+						p.OnIdle = func() {
+							fmt.Println("finish")
+						}
+						err = p.Run()
+						if err != nil {
+							return fmt.Errorf("Failed to ping :%v",err)
+						}
 						return nil
 					},
 				},
