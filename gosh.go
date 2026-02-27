@@ -632,9 +632,9 @@ func main() {
 							return fmt.Errorf("Failed to add file to archive:%v", err)
 						}
 
-						//copy uncompressed file to achive
+						//copy uncompressed file to archive
 						if _, err := io.Copy(w1, f1); err != nil {
-							return fmt.Errorf("Failed to copy uncompressed file to achive:%v", err)
+							return fmt.Errorf("Failed to copy uncompressed file to archive:%v", err)
 						}
 
 						fmt.Println("opening second file ...")
@@ -650,9 +650,9 @@ func main() {
 							return fmt.Errorf("Failed to add file to archive:%v", err)
 						}
 
-						//copy uncompressed file to achive
+						//copy uncompressed file to archive
 						if _, err := io.Copy(w2, f2); err != nil {
-							return fmt.Errorf("Failed to copy uncompressed file to achive:%v", err)
+							return fmt.Errorf("Failed to copy uncompressed file to archive:%v", err)
 						}
 
 						if err := zipWriter.Close(); err != nil {
@@ -730,9 +730,7 @@ func main() {
 
 							if _, err := io.CopyN(destFile, fileInArchive, MxDecompress); err != nil && err != io.EOF {
 								return fmt.Errorf("failed to copy contents or file too large: %v", err)
-							}
-							
-
+							}							
 						}
 						return nil
 					},
