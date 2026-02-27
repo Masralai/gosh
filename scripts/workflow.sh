@@ -11,7 +11,7 @@ go fmt ./...
 echo "Cleaning up go.mod..."
 go mod tidy
 
-# 3. Linting (The part that failed in CI)
+# 3. Linting (The part that failed in CI) lmao
 echo "Running golangci-lint..."
 # If you don't have it: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 # Using $(go env GOPATH) ensures it finds the binary regardless of your OS setup
