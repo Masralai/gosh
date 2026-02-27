@@ -1,14 +1,15 @@
 # GoSh (Go-Shell)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/devdeep606/go-cli)](https://goreportcard.com/report/github.com/devdeep606/go-cli)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Masralai/gosh)](https://goreportcard.com/report/github.com/Masralai/gosh)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/devdeep606/go-cli)](https://github.com/devdeep606/go-cli)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/Masralai/gosh)](https://github.com/Masralai/gosh)
 
 GoSh is a modular, interactive command-line interface built in Go. It provides a containerized environment for secure command execution, system monitoring, and file management.
 
 ---
 
 ## Table of Contents
+
 - [Key Features](#key_features)
 - [Architecture Overview](#architecture-overview)
 - [Prerequisites](#prerequisites)
@@ -37,12 +38,15 @@ GoSh is a modular, interactive command-line interface built in Go. It provides a
 GoSh is designed with a modular architecture that separates the command interface from the underlying system logic.
 
 ### Command Dispatcher
+
 The core engine is built on `urfave/cli/v3`. It acts as a dispatcher that maps user input to specific Go functions. This allows for easy extensibility—new commands can be added by simply registering them in the `root` command structure in `gosh.go`.
 
 ### Containerization Strategy
+
 The project leverages Docker to provide an isolated execution environment. This ensures that:
-1.  **Security:** Commands executed within the shell are isolated from the host system.
-2.  **Environment Consistency:** Dependencies and OS-level configurations are standardized across all deployments.
+
+1. **Security:** Commands executed within the shell are isolated from the host system.
+2. **Environment Consistency:** Dependencies and OS-level configurations are standardized across all deployments.
 
 ---
 
@@ -70,16 +74,19 @@ This command automatically builds the necessary images and initiates an interact
 To run GoSh directly on your host machine, follow these steps:
 
 1. **Initialize Module:**
+
    ```bash
    go mod init go-cli
    ```
 
 2. **Install Dependencies:**
+
    ```bash
    go get github.com/urfave/cli/v3
    ```
 
 3. **Launch Application:**
+
    ```bash
    go run gosh.go
    ```
