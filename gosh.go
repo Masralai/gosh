@@ -98,7 +98,10 @@ func main() {
 					UsageText: "cli cd <path>",
 
 					Action: func(ctx context.Context, c *cli.Command) error {
-						os.Chdir(c.Args().Get(0))
+						if err := os.Chdir(c.Args().Get(0)); err != nil {
+							return fmt.Errorf("failed to changed dir: %v", err)
+						}
+
 						wd, err := os.Getwd()
 						if err != nil {
 							return fmt.Errorf("failed to change Directory : %v", err)
@@ -196,9 +199,13 @@ func main() {
 							fmt.Println("are you sure you want to trigger recursive deletion ? y/n")
 
 							response := ""
-							fmt.Scanln(&response)
+							if _, err := fmt.Scanln(&response); err != nil {
+								return fmt.Errorf("failed to get user input:%v", err)
+							}
 							if response == "y" || response == "Y" {
-								os.RemoveAll(c.Args().Get(0))
+								if err := os.RemoveAll(c.Args().Get(0)); err != nil {
+									return fmt.Errorf("Failed recursive delete:%v", err)
+								}
 							} else {
 								fmt.Println("Aborted")
 							}
@@ -317,7 +324,9 @@ func main() {
 							// log.Fatal(err)
 							return fmt.Errorf("failed to read file contents: %v", err)
 						}
-						os.Stdout.Write(data)
+						if _, err := os.Stdout.Write(data); err != nil {
+							return fmt.Errorf("failed to write data:%v", err)
+						}
 						return nil
 					},
 				},
@@ -495,7 +504,10 @@ func main() {
 						if err != nil {
 							return fmt.Errorf("Failed to create regression Object: %v", err)
 						}
-						file, err := os.Open(filename)
+						//allow access only within the current directory
+						root, _ := os.OpenRoot(".")
+						defer root.Close()
+						file, err := root.Open(filename)
 						if err != nil {
 							return fmt.Errorf("Failed to open file %v", err)
 						}
@@ -643,7 +655,9 @@ func main() {
 							return fmt.Errorf("Failed to copy uncompressed file to achive:%v", err)
 						}
 
-						zipWriter.Close()
+						if err := zipWriter.Close(); err != nil {
+							return fmt.Errorf("failed to close zipwriter:%v", err)
+						}
 						return nil
 					},
 				},
@@ -661,27 +675,45 @@ func main() {
 						defer archive.Close()
 
 						dest := c.Args().Get(1)
+						root, err := os.OpenRoot(dest)
+						if err != nil {
+							return fmt.Errorf("failed to open dest root:%v", err)
+						}
+						defer root.Close()
 
 						for _, f := range archive.File {
-							filePath := filepath.Join(dest, f.Name)
+							// filePath := filepath.Join(dest, f.Name)
+							filePath:= f.Name
+
+							destAbs, _ := filepath.Abs(dest)
+							fileAbs, _ := filepath.Abs(filePath)
+							if !strings.HasPrefix(fileAbs, destAbs) {
+								return fmt.Errorf("illegal file path:%s", f.Name)
+							}
+
 							fmt.Println("unzipping file...", filePath)
+							//Decompression Bomb prevention
+							if !strings.HasPrefix(filePath, filepath.Clean(dest)+string(os.PathSeparator)) {
+								return fmt.Errorf("invalid file path %s", filePath)
+							}
 
 							//empty dir
 							if f.FileInfo().IsDir() {
 								fmt.Println("creating directory")
-								if err := os.MkdirAll(filePath, os.ModePerm); err != nil {
+								//os.ModePerm to 0750(User=All, Group=Read/Execute, Others=None).
+								if err := root.MkdirAll(filePath, 0750); err != nil {
 									return fmt.Errorf("failed to crreate empty dir: %v", err)
 								}
 								continue
 							}
 
 							//file within dir
-							if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
+							if err := root.MkdirAll(filepath.Dir(filePath), 0750); err != nil {
 								return fmt.Errorf("failed to unzip :%v", err)
 							}
 
 							//read-write, create, trucate config
-							destFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+							destFile, err := root.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 							if err != nil {
 								return fmt.Errorf("failed to create empty dest: %v", err)
 							}
@@ -694,9 +726,12 @@ func main() {
 							}
 							defer fileInArchive.Close()
 
-							if _, err := io.Copy(destFile, fileInArchive); err != nil {
-								return fmt.Errorf("failed to copy contents: %v", err)
+							const MxDecompress = 500 * 1024 * 1024 //500MiB
+
+							if _, err := io.CopyN(destFile, fileInArchive, MxDecompress); err != nil && err != io.EOF {
+								return fmt.Errorf("failed to copy contents or file too large: %v", err)
 							}
+							
 
 						}
 						return nil
