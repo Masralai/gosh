@@ -5,20 +5,16 @@ import (
 	"context"
 	"fmt"
 	"io"
-
 	// "log"
 	"archive/zip"
 	"os"
 	"regexp"
 	"runtime"
 	"strings"
-
-	// "os/exec"
-	// "path/filepath"
+	"path/filepath"
 	// "net/http"
 	"net"
 	"time"
-
 	// "github.com/shirou/gopsutil"
 	// "github.com/tklauser/go-sysconf"
 	//"github.com/joho/godotenv"
@@ -616,7 +612,9 @@ func main() {
 						}
 						defer f1.Close()
 						fmt.Println("adding file to the archive...")
-						path:="./"
+
+						//compression path 
+						path:=c.Args().Get(3)
 						w1,err := zipWriter.Create(path)
 						if err!=nil{
 							return fmt.Errorf("Failed to add file to archive:%v",err)
@@ -626,9 +624,26 @@ func main() {
 						if _,err:=io.Copy(w1,f1); err!=nil{
 							return fmt.Errorf("Failed to copy uncompressed file to achive:%v",err)
 						}
-						/////////////
-						//in progress
-						/////////////
+
+						fmt.Println("opening second file ...")
+						f2, err:=os.Open(c.Args().Get(2))
+						if err!=nil{
+							return fmt.Errorf("failed to open second file:%v",err)
+						}
+						defer f2.Close()
+
+						//create entry in the zip archive
+						w2,err := zipWriter.Create(path)
+						if err!=nil{
+							return fmt.Errorf("Failed to add file to archive:%v",err)
+						}
+
+						//copy uncompressed file to achive
+						if _,err:=io.Copy(w2,f2); err!=nil{
+							return fmt.Errorf("Failed to copy uncompressed file to achive:%v",err)
+						}
+						
+						zipWriter.Close()
 						return nil
 					},
 				},
@@ -637,6 +652,53 @@ func main() {
 					Usage:     "Extract from ZIP archive",
 					UsageText: "cli unzip <filename>.zip",
 					Action: func(ctx context.Context, c *cli.Command) error {
+						fmt.Println("opening zip archive")
+						filename:=c.Args().Get(0)
+						archive,err := zip.OpenReader(filename)
+						if err!=nil{
+							return fmt.Errorf("failed to read archive: %v",err)
+						}
+						defer archive.Close()
+
+						dest:= c.Args().Get(1)
+						
+						for _,f:= range archive.File{
+							filePath:= filepath.Join(dest,f.Name)
+							fmt.Println("unzipping file...",filePath)
+
+							//empty dir
+							if f.FileInfo().IsDir(){
+								fmt.Println("creating directory")
+								if err:=os.MkdirAll(filePath,os.ModePerm);err!=nil{
+									return fmt.Errorf("failed to crreate empty dir: %v",err)
+								}
+								continue
+							}
+
+							//file within dir
+							if err:= os.MkdirAll(filepath.Dir(filePath),os.ModePerm);err!=nil{
+								return fmt.Errorf("failed to unzip :%v",err)
+							}
+							
+							//read-write, create, trucate config
+							destFile,err:=  os.OpenFile(filePath,os.O_WRONLY|os.O_CREATE|os.O_TRUNC,f.Mode())
+							if err!=nil{
+								return fmt.Errorf("failed to create empty dest: %v",err)
+							}
+							defer destFile.Close()
+
+							//open file and copy contents
+							fileInArchive,err:= f.Open()
+							if err!=nil{
+								return fmt.Errorf("failed to open file:%v",err)
+							}
+							defer fileInArchive.Close()
+
+							if _,err:= io.Copy(destFile,fileInArchive);err!=nil{
+								return fmt.Errorf("failed to copy contents: %v",err)
+							}
+						
+						}
 						return nil
 					},
 				},
