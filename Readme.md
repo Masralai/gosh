@@ -38,4 +38,3 @@ If you prefer to run natively on your machine:
 1. Initialize: `go mod init go-cli`
 2. Dependencies: `go get github.com/urfave/cli/v3`
 3. Launch: `go run cli.go`
-

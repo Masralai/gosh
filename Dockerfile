@@ -8,7 +8,7 @@
 
 ################################################################################
 # Create a stage for building the application.
-ARG GO_VERSION=1.24.1
+ARG GO_VERSION=1.25.7
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION} AS build
 WORKDIR /src
 
@@ -31,6 +31,8 @@ ARG TARGETARCH
 # source code into the container.
 RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=bind,target=. \
+    go install golang.org/x/vuln/cmd/govulncheck@latest && \
+    govulncheck ./... && \
     CGO_ENABLED=0 GOARCH=$TARGETARCH go build -o /bin/gosh ./
 
 ################################################################################

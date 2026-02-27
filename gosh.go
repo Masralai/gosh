@@ -8,10 +8,10 @@ import (
 	// "log"
 	"archive/zip"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
-	"path/filepath"
 	// "net/http"
 	"net"
 	"time"
@@ -28,7 +28,7 @@ import (
 )
 
 func main() {
-	// godotenv.Load()
+
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("\033[H\033[2J") //clears terminal
 	fmt.Println(`
@@ -598,51 +598,51 @@ func main() {
 					Usage:     "compress file",
 					UsageText: "cli zip <filename>",
 					Action: func(ctx context.Context, c *cli.Command) error {
-						archive,err:=os.Create(c.Args().Get(0)+".zip")
-						if err!=nil{
-							return fmt.Errorf("failed to create zip archive :%v",err)
+						archive, err := os.Create(c.Args().Get(0) + ".zip")
+						if err != nil {
+							return fmt.Errorf("failed to create zip archive :%v", err)
 						}
 						defer archive.Close()
-						
-						zipWriter :=zip.NewWriter(archive)
+
+						zipWriter := zip.NewWriter(archive)
 						fmt.Println("opening first file...")
-						f1, err:= os.Open(c.Args().Get(1))
-						if err!=nil{
-							return fmt.Errorf("file error:%v",err)
+						f1, err := os.Open(c.Args().Get(1))
+						if err != nil {
+							return fmt.Errorf("file error:%v", err)
 						}
 						defer f1.Close()
 						fmt.Println("adding file to the archive...")
 
-						//compression path 
-						path:=c.Args().Get(3)
-						w1,err := zipWriter.Create(path)
-						if err!=nil{
-							return fmt.Errorf("Failed to add file to archive:%v",err)
+						//compression path
+						path := c.Args().Get(3)
+						w1, err := zipWriter.Create(path)
+						if err != nil {
+							return fmt.Errorf("Failed to add file to archive:%v", err)
 						}
 
 						//copy uncompressed file to achive
-						if _,err:=io.Copy(w1,f1); err!=nil{
-							return fmt.Errorf("Failed to copy uncompressed file to achive:%v",err)
+						if _, err := io.Copy(w1, f1); err != nil {
+							return fmt.Errorf("Failed to copy uncompressed file to achive:%v", err)
 						}
 
 						fmt.Println("opening second file ...")
-						f2, err:=os.Open(c.Args().Get(2))
-						if err!=nil{
-							return fmt.Errorf("failed to open second file:%v",err)
+						f2, err := os.Open(c.Args().Get(2))
+						if err != nil {
+							return fmt.Errorf("failed to open second file:%v", err)
 						}
 						defer f2.Close()
 
 						//create entry in the zip archive
-						w2,err := zipWriter.Create(path)
-						if err!=nil{
-							return fmt.Errorf("Failed to add file to archive:%v",err)
+						w2, err := zipWriter.Create(path)
+						if err != nil {
+							return fmt.Errorf("Failed to add file to archive:%v", err)
 						}
 
 						//copy uncompressed file to achive
-						if _,err:=io.Copy(w2,f2); err!=nil{
-							return fmt.Errorf("Failed to copy uncompressed file to achive:%v",err)
+						if _, err := io.Copy(w2, f2); err != nil {
+							return fmt.Errorf("Failed to copy uncompressed file to achive:%v", err)
 						}
-						
+
 						zipWriter.Close()
 						return nil
 					},
@@ -650,54 +650,54 @@ func main() {
 				{
 					Name:      "unzip",
 					Usage:     "Extract from ZIP archive",
-					UsageText: "cli unzip <filename>.zip",
+					UsageText: "cli unzip <filename>.zip dest",
 					Action: func(ctx context.Context, c *cli.Command) error {
 						fmt.Println("opening zip archive")
-						filename:=c.Args().Get(0)
-						archive,err := zip.OpenReader(filename)
-						if err!=nil{
-							return fmt.Errorf("failed to read archive: %v",err)
+						filename := c.Args().Get(0)
+						archive, err := zip.OpenReader(filename)
+						if err != nil {
+							return fmt.Errorf("failed to read archive: %v", err)
 						}
 						defer archive.Close()
 
-						dest:= c.Args().Get(1)
-						
-						for _,f:= range archive.File{
-							filePath:= filepath.Join(dest,f.Name)
-							fmt.Println("unzipping file...",filePath)
+						dest := c.Args().Get(1)
+
+						for _, f := range archive.File {
+							filePath := filepath.Join(dest, f.Name)
+							fmt.Println("unzipping file...", filePath)
 
 							//empty dir
-							if f.FileInfo().IsDir(){
+							if f.FileInfo().IsDir() {
 								fmt.Println("creating directory")
-								if err:=os.MkdirAll(filePath,os.ModePerm);err!=nil{
-									return fmt.Errorf("failed to crreate empty dir: %v",err)
+								if err := os.MkdirAll(filePath, os.ModePerm); err != nil {
+									return fmt.Errorf("failed to crreate empty dir: %v", err)
 								}
 								continue
 							}
 
 							//file within dir
-							if err:= os.MkdirAll(filepath.Dir(filePath),os.ModePerm);err!=nil{
-								return fmt.Errorf("failed to unzip :%v",err)
+							if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
+								return fmt.Errorf("failed to unzip :%v", err)
 							}
-							
+
 							//read-write, create, trucate config
-							destFile,err:=  os.OpenFile(filePath,os.O_WRONLY|os.O_CREATE|os.O_TRUNC,f.Mode())
-							if err!=nil{
-								return fmt.Errorf("failed to create empty dest: %v",err)
+							destFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+							if err != nil {
+								return fmt.Errorf("failed to create empty dest: %v", err)
 							}
 							defer destFile.Close()
 
 							//open file and copy contents
-							fileInArchive,err:= f.Open()
-							if err!=nil{
-								return fmt.Errorf("failed to open file:%v",err)
+							fileInArchive, err := f.Open()
+							if err != nil {
+								return fmt.Errorf("failed to open file:%v", err)
 							}
 							defer fileInArchive.Close()
 
-							if _,err:= io.Copy(destFile,fileInArchive);err!=nil{
-								return fmt.Errorf("failed to copy contents: %v",err)
+							if _, err := io.Copy(destFile, fileInArchive); err != nil {
+								return fmt.Errorf("failed to copy contents: %v", err)
 							}
-						
+
 						}
 						return nil
 					},
