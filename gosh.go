@@ -514,7 +514,7 @@ func main() {
 						defer file.Close()
 						scanner := bufio.NewScanner(file)
 						if c.Bool("f") {
-
+							return nil
 						}
 						if c.Bool("r") {
 
