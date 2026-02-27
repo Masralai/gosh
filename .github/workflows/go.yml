@@ -18,12 +18,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-          cache: false # golangci-lint has its own smarter caching
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          install-mode: go-install
+          cache: true
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Run golangci-lint
+        run: $(go env GOPATH)/bin/golangci-lint run ./..
 
   build-and-scan:
     runs-on: ubuntu-latest
