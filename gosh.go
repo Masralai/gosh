@@ -585,7 +585,7 @@ func main() {
 					Flags: []cli.Flag{
 						&cli.IntFlag{
 							Name:  "n",
-							Usage: "Number of lines to display",
+							Usage: "-n",
 							Value: 10,
 						},
 					},
@@ -600,9 +600,12 @@ func main() {
 						defer file.Close()
 
 						scanner := bufio.NewScanner(file)
-						lines := c.Int("n")
 						count := 0
-						for scanner.Scan() && count < lines {
+						maxLines := c.Int("n")
+						for scanner.Scan() {
+							if count >= maxLines {
+								break
+							}
 							fmt.Println(scanner.Text())
 							count++
 						}
@@ -615,9 +618,10 @@ func main() {
 					UsageText: "cli tail [-n <lines>] ",
 					Flags: []cli.Flag{
 						&cli.IntFlag{
-							Name:  "n",
-							Usage: "Number of lines to display",
-							Value: 10,
+							Name:    "lines",
+							Aliases: []string{"n"},
+							Usage:   "Number of lines to display",
+							Value:   10,
 						},
 					},
 					Action: func(ctx context.Context, c *cli.Command) error {
@@ -635,7 +639,7 @@ func main() {
 						for scanner.Scan() {
 							lines = append(lines, scanner.Text())
 						}
-						n := c.Int("n")
+						n := c.Int("lines")
 						if n > len(lines) {
 							n = len(lines)
 						}
@@ -823,16 +827,8 @@ func main() {
 				},
 			},
 
-			Flags: []cli.Flag{
-				&cli.BoolFlag{
-					Name:  "ginger-crouton",
-					Usage: "is it in the soup?",
-				},
-			},
+			Flags: []cli.Flag{},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
-				if !cmd.Bool("ginger-crouton") {
-					fmt.Println("invalid command")
-				}
 				return nil
 			},
 		}
