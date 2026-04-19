@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+
 	// "log"
 	"archive/zip"
 	"os"
@@ -12,9 +13,11 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
 	// "net/http"
 	"net"
 	"time"
+
 	// "github.com/shirou/gopsutil"
 	// "github.com/tklauser/go-sysconf"
 	//"github.com/joho/godotenv"
@@ -36,7 +39,7 @@ func main() {
       /|\/|\/|\ /|\    /\-_--\    /|\/|\ /|\/|\/|\ /|\/|\
       /|\/|\/|\ /|\   /  \_-__\   /|\/|\ /|\/|\/|\ /|\/|\
       /|\/|\/|\ /|\   |[]| [] |   /|\/|\ /|\/|\/|\ /|\/|\
-	
+
 	Welcome to GoSh
 	To get started: cli -h or cli {command} -h
 	  `)
@@ -138,25 +141,40 @@ func main() {
 					Usage:     "List Directory Contents",
 					UsageText: "cli ls",
 					Flags: []cli.Flag{
-						&cli.StringFlag{
+						&cli.BoolFlag{
 							Name:  "R",
 							Usage: "List subdirectories recursively",
 						},
-						&cli.StringFlag{
+						&cli.BoolFlag{
 							Name:  "S",
 							Usage: "Sort by file size",
 						},
-						&cli.StringFlag{
+						&cli.BoolFlag{
 							Name:  "a",
 							Usage: "Include hidden files",
 						},
 					},
-					Action: func(context.Context, *cli.Command) error {
-						rd, err := os.ReadDir("./")
+					Action: func(ctx context.Context, c *cli.Command) error {
+						path := "."
+						if c.Args().Len() > 0 {
+							path = c.Args().Get(0)
+						}
+						rd, err := os.ReadDir(path)
 						if err != nil {
 							return fmt.Errorf("failed to List Directory Contents: %v", err)
 						}
-						fmt.Println(rd)
+
+						for _, de := range rd {
+							name := de.Name()
+							if !c.Bool("a") && strings.HasPrefix(name, ".") {
+								continue
+							}
+							if de.IsDir() {
+								fmt.Printf("%s/\n", name)
+							} else {
+								fmt.Printf("%s\n", name)
+							}
+						}
 
 						return nil
 					},
@@ -305,27 +323,49 @@ func main() {
 					Usage:     "read contents",
 					UsageText: "cli cat <filename>",
 					Flags: []cli.Flag{
-						&cli.StringFlag{
+						&cli.BoolFlag{
 							Name:  "n",
 							Usage: "Add numbers to each line",
 						},
-						&cli.StringFlag{
+						&cli.BoolFlag{
 							Name:  "b",
 							Usage: "Add numbers only to lines with text",
 						},
-						&cli.StringFlag{
+						&cli.BoolFlag{
 							Name:  "s",
 							Usage: "Remove extra empty lines",
 						},
 					},
 					Action: func(ctx context.Context, c *cli.Command) error {
-						data, err := os.ReadFile(c.Args().Get(0))
+						if c.Args().Len() == 0 {
+							return fmt.Errorf("usage: cat <filename>")
+						}
+						file, err := os.Open(c.Args().Get(0))
 						if err != nil {
-							// log.Fatal(err)
 							return fmt.Errorf("failed to read file contents: %v", err)
 						}
-						if _, err := os.Stdout.Write(data); err != nil {
-							return fmt.Errorf("failed to write data:%v", err)
+						defer file.Close()
+
+						scanner := bufio.NewScanner(file)
+						lineNum := 0
+						prevEmpty := false
+						for scanner.Scan() {
+							line := scanner.Text()
+							isEmpty := len(strings.TrimSpace(line)) == 0
+
+							if c.Bool("s") && isEmpty && prevEmpty {
+								continue
+							}
+							prevEmpty = isEmpty
+
+							lineNum++
+							if c.Bool("n") {
+								fmt.Printf("%6d  %s\n", lineNum, line)
+							} else if c.Bool("b") && !isEmpty {
+								fmt.Printf("%6d  %s\n", lineNum, line)
+							} else if !c.Bool("n") && !c.Bool("b") {
+								fmt.Println(line)
+							}
 						}
 						return nil
 					},
@@ -495,16 +535,23 @@ func main() {
 					},
 					Action: func(ctx context.Context, c *cli.Command) error {
 						if c.Args().Len() < 2 {
-							return fmt.Errorf("not enough arguments")
+							return fmt.Errorf("usage: grep 'pattern' ")
 						}
 
 						filename := c.Args().Get(1)
 						pattern := c.Args().Get(0)
-						regObj, err := regexp.Compile(pattern)
-						if err != nil {
-							return fmt.Errorf("Failed to create regression Object: %v", err)
+
+						var regObj *regexp.Regexp
+						var err error
+						if c.Bool("f") {
+							regObj, err = regexp.Compile("(?i)" + pattern)
+						} else {
+							regObj, err = regexp.Compile(pattern)
 						}
-						//allow access only within the current directory
+						if err != nil {
+							return fmt.Errorf("Failed to create regex Object: %v", err)
+						}
+
 						root, _ := os.OpenRoot(".")
 						defer root.Close()
 						file, err := root.Open(filename)
@@ -512,33 +559,20 @@ func main() {
 							return fmt.Errorf("Failed to open file %v", err)
 						}
 						defer file.Close()
+
 						scanner := bufio.NewScanner(file)
-						if c.Bool("f") {
-							return nil
-						}
-						if c.Bool("r") {
-
-							for scanner.Scan() {
-								line := scanner.Text()
-								if regObj.MatchString(line) {
-									fmt.Printf("%s\n", line)
-								}
+						for scanner.Scan() {
+							line := scanner.Text()
+							matched := regObj.MatchString(line)
+							if c.Bool("v") {
+								matched = !matched
 							}
-						}
-
-						if c.Bool("v") {
-							for scanner.Scan() {
-								line := scanner.Text()
-								if !regObj.MatchString(line) {
-									fmt.Printf("%s\n", line)
-								}
-							}
-						}
-						for scanner.Scan() { //defer before this func since it has hidden scanner.Err()
-							line := scanner.Text() //strips the new line chars from the txt file
-							if regObj.MatchString(line) {
+							if matched {
 								fmt.Printf("%s\n", line)
 							}
+						}
+						if err := scanner.Err(); err != nil {
+							return fmt.Errorf("error reading file: %v", err)
 						}
 
 						return nil
@@ -547,16 +581,68 @@ func main() {
 				{
 					Name:      "head",
 					Usage:     "Display the beginning of a file",
-					UsageText: "cli head <filename>",
+					UsageText: "cli head [-n <lines>] ",
+					Flags: []cli.Flag{
+						&cli.IntFlag{
+							Name:  "n",
+							Usage: "Number of lines to display",
+							Value: 10,
+						},
+					},
 					Action: func(ctx context.Context, c *cli.Command) error {
+						if c.Args().Len() == 0 {
+							return fmt.Errorf("usage: head ")
+						}
+						file, err := os.Open(c.Args().Get(0))
+						if err != nil {
+							return fmt.Errorf("failed to open file: %v", err)
+						}
+						defer file.Close()
+
+						scanner := bufio.NewScanner(file)
+						lines := c.Int("n")
+						count := 0
+						for scanner.Scan() && count < lines {
+							fmt.Println(scanner.Text())
+							count++
+						}
 						return nil
 					},
 				},
 				{
 					Name:      "tail",
 					Usage:     "Display Last Part of Files",
-					UsageText: "cli tail <filename>",
+					UsageText: "cli tail [-n <lines>] ",
+					Flags: []cli.Flag{
+						&cli.IntFlag{
+							Name:  "n",
+							Usage: "Number of lines to display",
+							Value: 10,
+						},
+					},
 					Action: func(ctx context.Context, c *cli.Command) error {
+						if c.Args().Len() == 0 {
+							return fmt.Errorf("usage: tail ")
+						}
+						file, err := os.Open(c.Args().Get(0))
+						if err != nil {
+							return fmt.Errorf("failed to open file: %v", err)
+						}
+						defer file.Close()
+
+						var lines []string
+						scanner := bufio.NewScanner(file)
+						for scanner.Scan() {
+							lines = append(lines, scanner.Text())
+						}
+						n := c.Int("n")
+						if n > len(lines) {
+							n = len(lines)
+						}
+						start := len(lines) - n
+						for i := start; i < len(lines); i++ {
+							fmt.Println(lines[i])
+						}
 						return nil
 					},
 				},
@@ -565,7 +651,7 @@ func main() {
 				//Networking
 				{
 					Name:      "ping",
-					Usage:     "Send Request to Network Hosts",
+					Usage:     "Send Request to Network Hosts(requires sudo)",
 					UsageText: "cli ping <hostname>",
 					Action: func(ctx context.Context, c *cli.Command) error {
 						p := fastping.NewPinger()
@@ -683,7 +769,7 @@ func main() {
 
 						for _, f := range archive.File {
 							// filePath := filepath.Join(dest, f.Name)
-							filePath:= f.Name
+							filePath := f.Name
 
 							destAbs, _ := filepath.Abs(dest)
 							fileAbs, _ := filepath.Abs(filePath)
@@ -730,7 +816,7 @@ func main() {
 
 							if _, err := io.CopyN(destFile, fileInArchive, MxDecompress); err != nil && err != io.EOF {
 								return fmt.Errorf("failed to copy contents or file too large: %v", err)
-							}							
+							}
 						}
 						return nil
 					},
