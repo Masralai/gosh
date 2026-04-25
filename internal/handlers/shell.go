@@ -12,11 +12,10 @@ import (
 
 func Cli() *cli.Command {
 	return &cli.Command{
-		Name:            "cli",
-		SkipFlagParsing:  true,
-		Usage:           "Echo the provided arguments",
+		Name:             "cli",
+		SkipFlagParsing:   true,
+		Usage:            "Echo the provided arguments",
 		UsageText:        "cli [arguments]",
-		DisableFlagParsing: true,
 		Action: func(ctx context.Context, c *cli.Command) error {
 			fmt.Println("cli", c.Args())
 			return nil
