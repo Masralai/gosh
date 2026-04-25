@@ -195,7 +195,7 @@ func Mkdir() *cli.Command {
 			if c.Args().Len() == 0 {
 				return fmt.Errorf("usage: mkdir <pathname>")
 			}
-			if err := os.Mkdir(c.Args().Get(0), 0o755); err != nil {
+			if err := os.Mkdir(c.Args().Get(0), 0o750); err != nil {
 				return fmt.Errorf("failed to create directory: %v", err)
 			}
 			fmt.Printf("directory created: %s\n", c.Args().Get(0))
@@ -258,7 +258,9 @@ func Touch() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create file: %v", err)
 			}
-			f.Close()
+			if err := f.Close(); err != nil {
+				return fmt.Errorf("failed to close file: %v", err)
+			}
 			fmt.Printf("file created: %s\n", c.Args().Get(0))
 			return nil
 		},

@@ -38,7 +38,7 @@ func main() {
 				return nil
 			},
 		}
-		if err := root.Run(context.Background(), strings.Fields(scanner.Text())); err != nil {
+		if err := root.Run(context.Background(), append([]string{"GoSh"}, strings.Fields(scanner.Text())...)); err != nil {
 			fmt.Printf("GoSh error: %v\n", err)
 		}
 	}
