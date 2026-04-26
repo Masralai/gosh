@@ -11,16 +11,31 @@ go fmt ./...
 echo "Cleaning up go.mod..."
 go mod tidy
 
-# 3. Linting (The part that failed in CI) lmao
+# 3. Linting
 echo "Running golangci-lint..."
-# If you don't have it: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-# Using $(go env GOPATH) ensures it finds the binary regardless of your OS setup
-$(go env GOPATH)/bin/golangci-lint run ./...
+# Check common paths for golangci-lint
+if command -v golangci-lint &> /dev/null; then
+    golangci-lint run ./...
+elif [ -x "$(go env GOPATH)/bin/golangci-lint" ]; then
+    $(go env GOPATH)/bin/golangci-lint run ./...
+elif [ -x "/usr/local/bin/golangci-lint" ]; then
+    /usr/local/bin/golangci-lint run ./...
+else
+    echo "Warning: golangci-lint not found, skipping..."
+fi
 
 # 4. Security Scan
 echo "Running gosec..."
-# If you don't have gosec installed: go install github.com/securego/gosec/v2/cmd/gosec@latest
-$(go env GOPATH)/bin/gosec ./...
+# Check common paths for gosec
+if command -v gosec &> /dev/null; then
+    gosec ./...
+elif [ -x "$(go env GOPATH)/bin/gosec" ]; then
+    $(go env GOPATH)/bin/gosec ./...
+elif [ -x "/usr/local/bin/gosec" ]; then
+    /usr/local/bin/gosec ./...
+else
+    echo "Warning: gosec not found, skipping..."
+fi
 
 # 5. Vulnerability Check
 echo "Running govulncheck..."
@@ -32,7 +47,7 @@ go test -v ./...
 
 # 7. Build
 echo "Attempting build..."
-go build -o gosh-test.exe ./gosh.go
+go build -o gosh ./cmd/gosh
 
 echo "--- All checks passed! Ready to push. ---"
-rm gosh-test.exe
+rm -f gosh

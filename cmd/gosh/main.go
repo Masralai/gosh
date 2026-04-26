@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/chzyer/readline"
 	"github.com/Masralai/gosh/internal/handlers"
+	"github.com/chzyer/readline"
 	"github.com/urfave/cli/v3"
 )
 
@@ -16,8 +16,8 @@ func main() {
 	args := os.Args[1:]
 
 	root := &cli.Command{
-		Name:    "gosh",
-		Usage:   "GoSh - interactive shell",
+		Name:     "gosh",
+		Usage:    "GoSh - interactive shell",
 		Commands: handlers.All(),
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			return nil
@@ -52,7 +52,7 @@ func main() {
 			continue
 		}
 		// #nosec G104 - ignore history save errors
-		rl.SaveHistory(text)
+		_ = rl.SaveHistory(text)
 
 		fields := strings.Fields(text)
 		if len(fields) > 0 && fields[0] == "gosh" {

@@ -12,8 +12,8 @@ import (
 
 func Ping() *cli.Command {
 	return &cli.Command{
-		Name:     "ping",
-		Usage:    "Send ICMP echo requests to a host",
+		Name:      "ping",
+		Usage:     "Send ICMP echo requests to a host",
 		UsageText: "cli ping <hostname>",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() == 0 {

@@ -14,10 +14,10 @@ import (
 
 func Cli() *cli.Command {
 	return &cli.Command{
-		Name:             "cli",
-		SkipFlagParsing:   true,
-		Usage:            "Echo the provided arguments",
-		UsageText:        "cli [arguments]",
+		Name:            "cli",
+		SkipFlagParsing: true,
+		Usage:           "Echo the provided arguments",
+		UsageText:       "cli [arguments]",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			fmt.Println("cli", c.Args())
 			return nil
@@ -27,8 +27,8 @@ func Cli() *cli.Command {
 
 func Boom() *cli.Command {
 	return &cli.Command{
-		Name:     "boom",
-		Usage:    "Make an explosive entrance",
+		Name:      "boom",
+		Usage:     "Make an explosive entrance",
 		UsageText: "cli boom",
 		Action: func(context.Context, *cli.Command) error {
 			fmt.Println("boom! I say!")
@@ -39,8 +39,8 @@ func Boom() *cli.Command {
 
 func Echo() *cli.Command {
 	return &cli.Command{
-		Name:     "echo",
-		Usage:    "Display text",
+		Name:      "echo",
+		Usage:     "Display text",
 		UsageText: "cli echo [-n] [-e] <text>",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -127,8 +127,8 @@ func expandEscapes(s string) string {
 
 func Cd() *cli.Command {
 	return &cli.Command{
-		Name:     "cd",
-		Usage:    "Change the current working directory",
+		Name:      "cd",
+		Usage:     "Change the current working directory",
 		UsageText: "cli cd <path>",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() == 0 {
@@ -149,8 +149,8 @@ func Cd() *cli.Command {
 
 func Pwd() *cli.Command {
 	return &cli.Command{
-		Name:     "pwd",
-		Usage:    "Print the current working directory",
+		Name:      "pwd",
+		Usage:     "Print the current working directory",
 		UsageText: "cli pwd",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			wd, err := os.Getwd()
@@ -165,8 +165,8 @@ func Pwd() *cli.Command {
 
 func Exit() *cli.Command {
 	return &cli.Command{
-		Name:     "exit",
-		Usage:    "Exit the shell",
+		Name:      "exit",
+		Usage:     "Exit the shell",
 		UsageText: "cli exit",
 		Action: func(context.Context, *cli.Command) error {
 			os.Exit(0)
@@ -177,8 +177,8 @@ func Exit() *cli.Command {
 
 func Ls() *cli.Command {
 	return &cli.Command{
-		Name:     "ls",
-		Usage:    "List directory contents",
+		Name:      "ls",
+		Usage:     "List directory contents",
 		UsageText: "cli ls [-R] [-S] [-a] [path]",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -221,8 +221,8 @@ func Ls() *cli.Command {
 
 func Mkdir() *cli.Command {
 	return &cli.Command{
-		Name:     "mkdir",
-		Usage:    "Create directories",
+		Name:      "mkdir",
+		Usage:     "Create directories",
 		UsageText: "cli mkdir <path>",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() == 0 {
@@ -239,8 +239,8 @@ func Mkdir() *cli.Command {
 
 func Rm() *cli.Command {
 	return &cli.Command{
-		Name:     "rm",
-		Usage:    "Remove files or directories",
+		Name:      "rm",
+		Usage:     "Remove files or directories",
 		UsageText: "cli rm  | cli rm -rf <path>",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -280,8 +280,8 @@ func Rm() *cli.Command {
 
 func Touch() *cli.Command {
 	return &cli.Command{
-		Name:     "touch",
-		Usage:    "Create an empty file or update its timestamp",
+		Name:      "touch",
+		Usage:     "Create an empty file or update its timestamp",
 		UsageText: "cli touch ",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() == 0 {
@@ -302,8 +302,8 @@ func Touch() *cli.Command {
 
 func Mv() *cli.Command {
 	return &cli.Command{
-		Name:     "mv",
-		Usage:    "Move or rename a file or directory",
+		Name:      "mv",
+		Usage:     "Move or rename a file or directory",
 		UsageText: "cli mv <source> <destination>",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() < 2 {
@@ -322,8 +322,8 @@ func Mv() *cli.Command {
 
 func Cp() *cli.Command {
 	return &cli.Command{
-		Name:     "cp",
-		Usage:    "Copy files and directories",
+		Name:      "cp",
+		Usage:     "Copy files and directories",
 		UsageText: "cli cp <source> <destination>",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() < 2 {
@@ -363,8 +363,8 @@ func Cp() *cli.Command {
 
 func Dir() *cli.Command {
 	return &cli.Command{
-		Name:     "dir",
-		Usage:    "Display directory contents",
+		Name:      "dir",
+		Usage:     "Display directory contents",
 		UsageText: "cli dir <path>",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() == 0 {
@@ -382,8 +382,8 @@ func Dir() *cli.Command {
 
 func Cat() *cli.Command {
 	return &cli.Command{
-		Name:     "cat",
-		Usage:    "Read and display file contents",
+		Name:      "cat",
+		Usage:     "Read and display file contents",
 		UsageText: "cli cat [-n] [-b] [-s] ",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -436,8 +436,8 @@ func Cat() *cli.Command {
 
 func Info() *cli.Command {
 	return &cli.Command{
-		Name:     "info",
-		Usage:    "Display file information",
+		Name:      "info",
+		Usage:     "Display file information",
 		UsageText: "cli info ",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if c.Args().Len() == 0 {

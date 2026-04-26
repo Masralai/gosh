@@ -130,7 +130,7 @@ func Du() *cli.Command {
 func Kill() *cli.Command {
 	return &cli.Command{
 		Name:      "kill",
-		Usage:    "Terminate Processes using process id",
+		Usage:     "Terminate Processes using process id",
 		UsageText: "cli kill <processname>",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			ps, err := process.Processes()

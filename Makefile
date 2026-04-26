@@ -1,7 +1,7 @@
 .PHONY: build test lint vet gosec clean
 
 build:
-	go build -o gosh .
+	go build -o gosh ./cmd/gosh
 
 test:
 	go test -race ./...
