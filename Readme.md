@@ -10,10 +10,12 @@ GoSh is a modular, interactive command-line interface built in Go. It provides a
 
 ## Table of Contents
 
-- [Key Features](#key_features)
-- [Architecture Overview](#architecture-overview)
+- [Key Features](#key-features)
+- [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
-- [Installation and Execution](#installation-and-execution)
+- [Installation](#installation)
+- [Building](#building)
+- [Testing](#testing)
 - [Command Reference](#command-reference)
 - [Contributing](#contributing)
 - [License](#license)
@@ -24,89 +26,187 @@ GoSh is a modular, interactive command-line interface built in Go. It provides a
 ## Key Features
 
 - **Robust Command Engine:** Utilizes `urfave/cli/v3` for sophisticated argument parsing and flag management.
-- **Enhanced Security:** Custom file operation logic includes recursive guards and mandatory confirmation prompts for destructive actions.
-- **Portability:** Fully containerized architecture using Docker ensures a consistent, zero-install execution environment.
-- **Interactive Experience:** Integrated command scanning provides a fluid terminal interaction with persistent history.
+- **Enhanced Security:** Path traversal guards, directory traversal checks, and confirmation prompts for destructive actions.
+- **Portability:** Works natively or containerized with Docker.
+- **Interactive Experience:** Integrated command scanning provides a fluid terminal interaction.
 - **System Monitoring:** Built-in tools for monitoring CPU, memory, disk usage, and process management.
 - **Network Utilities:** Integrated network diagnostic tools including ping functionality.
-- **Archive Management:** Support for creating and extracting ZIP archives with security checks against decompression bombs.
+- **Archive Management:** Support for creating and extracting ZIP archives with security checks.
+- **Security Scanned:** Code undergoes gosec security analysis.
 
 ---
 
-## Architecture Overview
+## Architecture
 
-GoSh is designed with a modular architecture that separates the command interface from the underlying system logic.
+```
+gosh/
+├── cmd/gosh/main.go       # Entry point
+├── internal/handlers/     # Command implementations
+│   ├── commands.go       # Command aggregator
+│   ├── shell.go        # Shell utilities (ls, cd, pwd, mkdir, cp, mv, etc.)
+│   ├── system.go      # System monitoring (sys, mu, du, ps, kill, etc.)
+│   ├── text.go      # Text processing (grep, head, tail)
+│   ├── network.go   # Networking (ping)
+│   └── storage.go   # Archives (zip, unzip)
+├── Makefile          # Build automation
+├── Dockerfile       # Container definition
+└── compose.yaml    # Docker Compose
+```
+
+### Component Overview
+
+| Component | Description |
+|-----------|-------------|
+| `cmd/gosh/main.go` | Entry point, sets up urfave/cli and command loop |
+| `internal/handlers/` | All command implementations |
 
 ### Command Dispatcher
 
-The core engine is built on `urfave/cli/v3`. It acts as a dispatcher that maps user input to specific Go functions. This allows for easy extensibility—new commands can be added by simply registering them in the `root` command structure in `gosh.go`.
-
-### Containerization Strategy
-
-The project leverages Docker to provide an isolated execution environment. This ensures that:
-
-1. **Security:** Commands executed within the shell are isolated from the host system.
-2. **Environment Consistency:** Dependencies and OS-level configurations are standardized across all deployments.
+The core engine is built on `urfave/cli/v3`. It maps user input to specific handler functions in `internal/handlers/`. New commands can be added by implementing a handler function and registering it in `commands.go`.
 
 ---
 
 ## Prerequisites
 
-- **Go:** Version 1.25 or higher (for native builds).
-- **Docker:** Docker Desktop or Docker Engine (recommended for isolated execution).
+- **Go:** Version 1.25 or higher
+- **Docker:** Optional, for containerized execution
 
 ---
 
-## Installation and Execution
+## Installation
 
-### Docker Execution (Recommended)
+### Native (Recommended)
 
-Running GoSh via Docker is the most efficient method as it avoids modifying your local system environment.
-
-```powershell
-docker compose run gosh
+1. Clone the repository:
+```bash
+git clone https://github.com/Masralai/gosh
+cd gosh
 ```
 
-This command automatically builds the necessary images and initiates an interactive TTY session.
+2. Build:
+```bash
+make build
+# or
+go build -o gosh ./cmd/gosh
+```
 
-### Native Local Build
+3. Run:
+```bash
+./gosh
+```
 
-To run GoSh directly on your host machine, follow these steps:
+### Docker
 
-1. **Initialize Module:**
+```bash
+docker compose up --build
+```
 
-   ```bash
-   go mod init go-cli
-   ```
+---
 
-2. **Install Dependencies:**
+## Building
 
-   ```bash
-   go get github.com/urfave/cli/v3
-   ```
+### Using Makefile
 
-3. **Launch Application:**
+```bash
+make build    # Builds binary to ./gosh
+make test    # Runs tests with race detector
+make lint   # Runs linter
+make vet    # Runs go vet
+make clean  # Removes binary
+```
 
-   ```bash
-   go run gosh.go
-   ```
+### Manual Build
+
+```bash
+# Build binary
+go build -o gosh ./cmd/gosh
+
+# Run tests
+go test -race ./...
+
+# Lint
+golangci-lint run ./...
+
+# Vet
+go vet ./...
+```
+
+---
+
+## Testing
+
+Run tests with race detection:
+
+```bash
+make test
+# or
+go test -race ./...
+```
 
 ---
 
 ## Command Reference
 
-| Command | Category | Description | Primary Flags |
-| :--- | :--- | :--- | :--- |
-| `ls` | File Ops | List directory contents | `-a`, `-R`, `-S` |
-| `cd` | File Ops | Change working directory | |
-| `rm` | File Ops | Remove files or directories | `-rf` (Recursive) |
-| `sys` | System | Display system information | |
-| `mu` | System | Memory usage stats | |
-| `du` | System | Disk usage stats | |
-| `grep` | Text | Search text using regex | `-f`, `-r`, `-v` |
-| `ping` | Network | Network host diagnostic | |
-| `zip` | Storage | Create ZIP archive | |
-| `unzip`| Storage | Extract ZIP archive | |
+### File Operations
+
+| Command | Description | Flags |
+| :--- | :--- | :--- |
+| `ls` | List directory contents | `-a` (hidden), `-R` (recursive), `-S` (size) |
+| `cd` | Change directory | |
+| `pwd` | Print working directory | |
+| `mkdir` | Create directory | |
+| `rm` | Remove files/directories | `-rf` (recursive) |
+| `touch` | Create empty file | |
+| `mv` | Move/rename | |
+| `cp` | Copy file | |
+| `cat` | Display file contents | `-n` (line numbers), `-b` (non-blank), `-s` (squeeze) |
+| `info` | File information | |
+| `dir` | List directory | |
+
+### System Monitoring
+
+| Command | Description |
+| :--- | :--- |
+| `ps` | Process status |
+| `sys` | System information |
+| `mu` | Memory usage |
+| `du` | Disk usage |
+| `ut` | Uptime |
+
+### Text Processing
+
+| Command | Description | Flags |
+| :--- | :--- | :--- |
+| `grep` | Search text using regex | `-f` (ignore case), `-r` (recursive), `-v` (invert) |
+| `head` | Display first lines | `-n` (count) |
+| `tail` | Display last lines | `-n` (count) |
+
+### Networking
+
+| Command | Description |
+| :--- | :--- |
+| `ping` | Ping a host |
+
+### Archives
+
+| Command | Description |
+| :--- | :--- |
+| `zip` | Create ZIP archive |
+| `unzip` | Extract ZIP archive |
+
+### Shell Utilities
+
+| Command | Description | Flags |
+| :--- | :--- | :--- |
+| `echo` | Display text | `-n` (no newline), `-e` (escapes) |
+| `boom` | Explosive entrance | |
+| `exit` | Exit shell | |
+
+---
+
+## Contributing
+
+Contributions are welcome! Please submit a PR or open an issue.
 
 ---
 
@@ -118,6 +218,6 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 ## Acknowledgments
 
-- [urfave/cli](https://github.com/urfave/cli) - For the robust CLI framework.
-- [gopsutil](https://github.com/shirou/gopsutil) - For cross-platform system monitoring.
-- [fastping](https://github.com/tatsushid/go-fastping) - For network diagnostic capabilities.
+- [urfave/cli](https://github.com/urfave/cli) - CLI framework
+- [gopsutil](https://github.com/shirou/gopsutil) - Cross-platform system monitoring
+- [fastping](https://github.com/tatsushid/go-fastping) - Network diagnostics
