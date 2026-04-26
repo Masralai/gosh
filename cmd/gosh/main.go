@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/chzyer/readline"
 	"github.com/Masralai/gosh/internal/handlers"
 	"github.com/urfave/cli/v3"
 )
@@ -35,20 +35,30 @@ func main() {
 	}
 
 	printBanner()
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		text := scanner.Text()
+
+	rl, err := readline.New("gosh> ")
+	if err != nil {
+		panic(err)
+	}
+	defer rl.Close()
+
+	for {
+		line, err := rl.Readline()
+		if err != nil {
+			break
+		}
+		text := strings.TrimSpace(line)
 		if text == "" {
-			fmt.Print("gosh> ")
 			continue
 		}
+		// #nosec G104 - ignore history save errors
+		rl.SaveHistory(text)
+
 		fields := strings.Fields(text)
-		// Strip "gosh" prefix if present
 		if len(fields) > 0 && fields[0] == "gosh" {
 			fields = fields[1:]
 		}
 		if len(fields) == 0 {
-			fmt.Print("gosh> ")
 			continue
 		}
 
@@ -61,7 +71,6 @@ func main() {
 			bashCmd = strings.TrimSpace(bashCmd)
 			if bashCmd == "" {
 				fmt.Printf("error: empty bash command\n")
-				fmt.Print("gosh> ")
 				continue
 			}
 			// #nosec G204 - explicit user command with ! prefix
@@ -72,7 +81,6 @@ func main() {
 			if err := cmd.Run(); err != nil {
 				fmt.Printf("error: %v\n", err)
 			}
-			fmt.Print("gosh> ")
 			continue
 		}
 
@@ -81,7 +89,6 @@ func main() {
 		if err := root.Run(context.Background(), argsWithPrefix); err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
-		fmt.Print("gosh> ")
 	}
 }
 
@@ -96,5 +103,4 @@ func printBanner() {
 	Welcome to GoSh v2.0.0
 	To get started: {command} -h or {command}
 	  `)
-	fmt.Print("gosh> ")
 }
