@@ -110,7 +110,7 @@ func printBanner() {
       /|\/|\/|\ /|\   /  \_-__\   /|\/|\ /|\/|\/|\ /|\/|\
       /|\/|\/|\ /|\   |[]| [] |   /|\/|\ /|\/|\/|\ /|\/|\
 
-	Welcome to GoSh v2.0.0
+	Welcome to GoSh
 	To get started: {command} -h or {command}
 	  `)
 }
