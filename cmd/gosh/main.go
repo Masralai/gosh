@@ -12,7 +12,54 @@ import (
 )
 
 func main() {
+	args := os.Args[1:]
+
+	root := &cli.Command{
+		Name:    "gosh",
+		Usage:   "GoSh - interactive shell",
+		Commands: handlers.All(),
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			return nil
+		},
+	}
+
+	if len(args) > 0 {
+		argsWithPrefix := append([]string{"gosh"}, args...)
+		err := root.Run(context.Background(), argsWithPrefix)
+		if err != nil {
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	printBanner()
 	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		text := scanner.Text()
+		if text == "" {
+			fmt.Print("gosh> ")
+			continue
+		}
+		fields := strings.Fields(text)
+		// Strip "gosh" prefix if present
+		if len(fields) > 0 && fields[0] == "gosh" {
+			fields = fields[1:]
+		}
+		if len(fields) == 0 {
+			fmt.Print("gosh> ")
+			continue
+		}
+		// Add prefix for urfave routing
+		argsWithPrefix := append([]string{"gosh"}, fields...)
+		if err := root.Run(context.Background(), argsWithPrefix); err != nil {
+			fmt.Printf("error: %v\n", err)
+		}
+		fmt.Print("gosh> ")
+	}
+}
+
+func printBanner() {
 	fmt.Print("\033[H\033[2J")
 	fmt.Println(`
        ^  ^  ^   ^      ___I_      ^  ^   ^  ^  ^   ^  ^
@@ -20,27 +67,8 @@ func main() {
       /|\/|\/|\ /|\   /  \_-__\   /|\/|\ /|\/|\/|\ /|\/|\
       /|\/|\/|\ /|\   |[]| [] |   /|\/|\ /|\/|\/|\ /|\/|\
 
-	Welcome to GoSh
-	To get started: cli -h or cli {command} -h
+	Welcome to GoSh v2.0.0
+	To get started: {command} -h or {command}
 	  `)
-	for scanner.Scan() {
-		root := &cli.Command{
-			Name:                     "GoSh",
-			Version:                  "v1.2.0",
-			EnableShellCompletion:    true,
-			Authors: []any{
-				"Name:  Devdeep Paul",
-			},
-			Usage:     "A cozy, cross-platform shell environment built with Go.",
-			UsageText: "cli [command] [arguments]",
-			Commands:  handlers.All(),
-			Flags:     []cli.Flag{},
-			Action: func(ctx context.Context, cmd *cli.Command) error {
-				return nil
-			},
-		}
-		if err := root.Run(context.Background(), append([]string{"GoSh"}, strings.Fields(scanner.Text())...)); err != nil {
-			fmt.Printf("GoSh error: %v\n", err)
-		}
-	}
+	fmt.Print("gosh> ")
 }
