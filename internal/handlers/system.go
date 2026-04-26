@@ -56,7 +56,14 @@ func Sys() *cli.Command {
 			fmt.Println("hostname:", hs)
 
 			fmt.Println("number of available cpu:", runtime.NumCPU())
-			fmt.Println(host.PlatformInformation())
+
+			platform, family, version, err := host.PlatformInformation()
+			if err != nil {
+				return fmt.Errorf("failed to get platform info: %v", err)
+			}
+			fmt.Println("platform:", platform)
+			fmt.Println("family:", family)
+			fmt.Println("version:", version)
 
 			kv, err := host.KernelVersion()
 			if err != nil {
@@ -123,7 +130,7 @@ func Du() *cli.Command {
 func Kill() *cli.Command {
 	return &cli.Command{
 		Name:      "kill",
-		Usage:     "Terminate Processes using process id",
+		Usage:    "Terminate Processes using process id",
 		UsageText: "cli kill <processname>",
 		Action: func(ctx context.Context, c *cli.Command) error {
 			ps, err := process.Processes()
@@ -133,7 +140,7 @@ func Kill() *cli.Command {
 			for _, p := range ps {
 				n, err := p.Name()
 				if err != nil {
-					return err
+					continue
 				}
 				if n == c.Args().Get(0) {
 					return p.Kill()

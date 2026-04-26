@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -85,6 +86,37 @@ func expandEscapes(s string) string {
 				result.WriteByte('\\')
 				i++
 				continue
+			case 'a':
+				result.WriteByte('\a')
+				i++
+				continue
+			case 'b':
+				result.WriteByte('\b')
+				i++
+				continue
+			case 'f':
+				result.WriteByte('\f')
+				i++
+				continue
+			case 'r':
+				result.WriteByte('\r')
+				i++
+				continue
+			case 'v':
+				result.WriteByte('\v')
+				i++
+				continue
+			case 'x':
+				if i+3 < len(s) {
+					hex := s[i+2 : i+4]
+					var n int
+					_, err := fmt.Sscanf(hex, "%2x", &n)
+					if err == nil {
+						result.WriteByte(byte(n))
+						i += 3
+						continue
+					}
+				}
 			}
 		}
 		result.WriteByte(s[i])
@@ -298,9 +330,21 @@ func Cp() *cli.Command {
 			}
 			src := c.Args().Get(0)
 			dest := c.Args().Get(1)
-			srcFS := os.DirFS(src)
-			if err := os.CopyFS(dest, srcFS); err != nil {
-				return fmt.Errorf("failed to copy %q: %v", src, err)
+
+			srcFile, err := os.Open(src)
+			if err != nil {
+				return fmt.Errorf("failed to open source: %v", err)
+			}
+			defer srcFile.Close()
+
+			destFile, err := os.Create(dest)
+			if err != nil {
+				return fmt.Errorf("failed to create destination: %v", err)
+			}
+			defer destFile.Close()
+
+			if _, err := io.Copy(destFile, srcFile); err != nil {
+				return fmt.Errorf("failed to copy: %v", err)
 			}
 			fmt.Printf("copied %q to %q\n", src, dest)
 			return nil

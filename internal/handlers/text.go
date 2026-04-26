@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/urfave/cli/v3"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"regexp"
+
+	"github.com/urfave/cli/v3"
 )
 
 func Grep() *cli.Command {
@@ -45,6 +48,37 @@ func Grep() *cli.Command {
 			}
 			if err != nil {
 				return fmt.Errorf("Failed to create regex Object: %v", err)
+			}
+
+			if c.Bool("r") {
+				return filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if d.IsDir() {
+						return nil
+					}
+					file, err := os.Open(path)
+					if err != nil {
+						return nil
+					}
+					defer file.Close()
+
+					scanner := bufio.NewScanner(file)
+					lineNum := 0
+					for scanner.Scan() {
+						lineNum++
+						line := scanner.Text()
+						matched := regObj.MatchString(line)
+						if c.Bool("v") {
+							matched = !matched
+						}
+						if matched {
+							fmt.Printf("%s:%d:%s\n", path, lineNum, line)
+						}
+					}
+					return scanner.Err()
+				})
 			}
 
 			root, _ := os.OpenRoot(".")

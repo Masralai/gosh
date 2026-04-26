@@ -19,6 +19,11 @@ func Ping() *cli.Command {
 			if c.Args().Len() == 0 {
 				return fmt.Errorf("usage: ping <hostname>")
 			}
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("operation cancelled: %w", ctx.Err())
+			default:
+			}
 			p := fastping.NewPinger()
 			ra, err := net.ResolveIPAddr("ip4:icmp", c.Args().Get(0))
 			if err != nil {

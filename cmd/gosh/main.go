@@ -25,8 +25,9 @@ func main() {
 	  `)
 	for scanner.Scan() {
 		root := &cli.Command{
-			Name:    "GoSh",
-			Version: "v1.2.0",
+			Name:                     "GoSh",
+			Version:                  "v1.2.0",
+			EnableShellCompletion:    true,
 			Authors: []any{
 				"Name:  Devdeep Paul",
 			},

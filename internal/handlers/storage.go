@@ -16,8 +16,12 @@ func Zip() *cli.Command {
 
 		Name:      "zip",
 		Usage:     "compress file",
-		UsageText: "cli zip <filename>",
+		UsageText: "cli zip ",
 		Action: func(ctx context.Context, c *cli.Command) error {
+			if c.Args().Len() < 2 {
+				return fmt.Errorf("usage: zip <archive.zip> <file1> [file2] ...")
+			}
+
 			archive, err := os.Create(c.Args().Get(0) + ".zip")
 			if err != nil {
 				return fmt.Errorf("failed to create zip archive :%v", err)
@@ -25,47 +29,28 @@ func Zip() *cli.Command {
 			defer archive.Close()
 
 			zipWriter := zip.NewWriter(archive)
-			fmt.Println("opening first file...")
-			f1, err := os.Open(c.Args().Get(1))
-			if err != nil {
-				return fmt.Errorf("file error:%v", err)
-			}
-			defer f1.Close()
-			fmt.Println("adding file to the archive...")
+			defer zipWriter.Close()
 
-			//compression path
-			path := c.Args().Get(3)
-			w1, err := zipWriter.Create(path)
-			if err != nil {
-				return fmt.Errorf("Failed to add file to archive:%v", err)
-			}
+			for _, filePath := range c.Args().Slice()[1:] {
+				fmt.Println("opening", filePath, "...")
+				f, err := os.Open(filePath)
+				if err != nil {
+					return fmt.Errorf("file error:%v", err)
+				}
+				defer f.Close()
 
-			//copy uncompressed file to archive
-			if _, err := io.Copy(w1, f1); err != nil {
-				return fmt.Errorf("Failed to copy uncompressed file to archive:%v", err)
-			}
+				path := filepath.Base(filePath)
+				w, err := zipWriter.Create(path)
+				if err != nil {
+					return fmt.Errorf("Failed to add file to archive:%v", err)
+				}
 
-			fmt.Println("opening second file ...")
-			f2, err := os.Open(c.Args().Get(2))
-			if err != nil {
-				return fmt.Errorf("failed to open second file:%v", err)
-			}
-			defer f2.Close()
-
-			//create entry in the zip archive
-			w2, err := zipWriter.Create(path)
-			if err != nil {
-				return fmt.Errorf("Failed to add file to archive:%v", err)
+				if _, err := io.Copy(w, f); err != nil {
+					return fmt.Errorf("Failed to copy uncompressed file to archive:%v", err)
+				}
+				fmt.Println("added", path, "to archive...")
 			}
 
-			//copy uncompressed file to archive
-			if _, err := io.Copy(w2, f2); err != nil {
-				return fmt.Errorf("Failed to copy uncompressed file to archive:%v", err)
-			}
-
-			if err := zipWriter.Close(); err != nil {
-				return fmt.Errorf("failed to close zipwriter:%v", err)
-			}
 			return nil
 		},
 	}
