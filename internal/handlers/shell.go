@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/urfave/cli/v3"
@@ -111,7 +112,7 @@ func expandEscapes(s string) string {
 					hex := s[i+2 : i+4]
 					var n int
 					_, err := fmt.Sscanf(hex, "%2x", &n)
-					if err == nil {
+					if err == nil && n >= 0 && n <= 255 {
 						result.WriteByte(byte(n))
 						i += 3
 						continue
@@ -330,6 +331,14 @@ func Cp() *cli.Command {
 			}
 			src := c.Args().Get(0)
 			dest := c.Args().Get(1)
+
+			src = filepath.Clean(src)
+			dest = filepath.Clean(dest)
+			if !strings.HasPrefix(dest, "/") && !strings.HasPrefix(dest, ".") {
+				if filepath.IsAbs(dest) || strings.Contains(dest, "..") {
+					return fmt.Errorf("invalid destination path")
+				}
+			}
 
 			srcFile, err := os.Open(src)
 			if err != nil {

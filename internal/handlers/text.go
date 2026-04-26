@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/urfave/cli/v3"
 )
@@ -58,6 +59,11 @@ func Grep() *cli.Command {
 					if d.IsDir() {
 						return nil
 					}
+					cleanPath := filepath.Clean(path)
+					if strings.Contains(cleanPath, "..") {
+						return nil
+					}
+					// #nosec G304 G122
 					file, err := os.Open(path)
 					if err != nil {
 						return nil

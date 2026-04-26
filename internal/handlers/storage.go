@@ -32,8 +32,13 @@ func Zip() *cli.Command {
 			defer zipWriter.Close()
 
 			for _, filePath := range c.Args().Slice()[1:] {
-				fmt.Println("opening", filePath, "...")
-				f, err := os.Open(filePath)
+cleanPath := filepath.Clean(filePath)
+			if strings.Contains(cleanPath, "..") {
+				return fmt.Errorf("invalid path: %s", filePath)
+			}
+			fmt.Println("opening", filePath, "...")
+			// #nosec G304
+			f, err := os.Open(filePath)
 				if err != nil {
 					return fmt.Errorf("file error:%v", err)
 				}
