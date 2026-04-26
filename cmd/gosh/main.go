@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/Masralai/gosh/internal/handlers"
@@ -50,6 +51,31 @@ func main() {
 			fmt.Print("gosh> ")
 			continue
 		}
+
+		// Bash forwarding with ! prefix
+		if strings.HasPrefix(fields[0], "!") {
+			bashCmd := strings.TrimPrefix(fields[0], "!")
+			if len(fields) > 1 {
+				bashCmd += " " + strings.Join(fields[1:], " ")
+			}
+			bashCmd = strings.TrimSpace(bashCmd)
+			if bashCmd == "" {
+				fmt.Printf("error: empty bash command\n")
+				fmt.Print("gosh> ")
+				continue
+			}
+			// #nosec G204 - explicit user command with ! prefix
+			cmd := exec.Command("bash", "-c", bashCmd)
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				fmt.Printf("error: %v\n", err)
+			}
+			fmt.Print("gosh> ")
+			continue
+		}
+
 		// Add prefix for urfave routing
 		argsWithPrefix := append([]string{"gosh"}, fields...)
 		if err := root.Run(context.Background(), argsWithPrefix); err != nil {
