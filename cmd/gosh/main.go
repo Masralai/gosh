@@ -35,7 +35,7 @@ func main() {
 			}
 		} else {
 			bashCmd := strings.Join(args, " ")
-			cmd := exec.Command("bash", "-c", bashCmd)
+			cmd := exec.Command("bash", "-c", bashCmd) // #nosec G204 G702
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
@@ -91,13 +91,14 @@ func main() {
 		if bashCmd == "" {
 			continue
 		}
-		// #nosec G204 - explicit user command
+// #nosec G204 G702
 		cmd := exec.Command("bash", "-c", bashCmd)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
 			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
 		}
 	}
 }
