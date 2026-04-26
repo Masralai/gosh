@@ -25,11 +25,24 @@ func main() {
 	}
 
 	if len(args) > 0 {
-		argsWithPrefix := append([]string{"gosh"}, args...)
-		err := root.Run(context.Background(), argsWithPrefix)
-		if err != nil {
-			fmt.Printf("error: %v\n", err)
-			os.Exit(1)
+		if len(args) > 0 && strings.HasPrefix(args[0], "!") {
+			cmd := strings.TrimPrefix(args[0], "!")
+			argsWithPrefix := append([]string{"gosh", cmd}, args[1:]...)
+			err := root.Run(context.Background(), argsWithPrefix)
+			if err != nil {
+				fmt.Printf("error: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			bashCmd := strings.Join(args, " ")
+			cmd := exec.Command("bash", "-c", bashCmd)
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				fmt.Printf("error: %v\n", err)
+				os.Exit(1)
+			}
 		}
 		return
 	}
@@ -62,31 +75,28 @@ func main() {
 			continue
 		}
 
-		// Bash forwarding with ! prefix
+		// ! prefix for gosh commands, default to bash
 		if strings.HasPrefix(fields[0], "!") {
-			bashCmd := strings.TrimPrefix(fields[0], "!")
-			if len(fields) > 1 {
-				bashCmd += " " + strings.Join(fields[1:], " ")
-			}
-			bashCmd = strings.TrimSpace(bashCmd)
-			if bashCmd == "" {
-				fmt.Printf("error: empty bash command\n")
-				continue
-			}
-			// #nosec G204 - explicit user command with ! prefix
-			cmd := exec.Command("bash", "-c", bashCmd)
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
+			cmd := strings.TrimPrefix(fields[0], "!")
+			argsWithPrefix := append([]string{"gosh", cmd}, fields[1:]...)
+			if err := root.Run(context.Background(), argsWithPrefix); err != nil {
 				fmt.Printf("error: %v\n", err)
 			}
 			continue
 		}
 
-		// Add prefix for urfave routing
-		argsWithPrefix := append([]string{"gosh"}, fields...)
-		if err := root.Run(context.Background(), argsWithPrefix); err != nil {
+		// Default: forward to bash
+		bashCmd := strings.Join(fields, " ")
+		bashCmd = strings.TrimSpace(bashCmd)
+		if bashCmd == "" {
+			continue
+		}
+		// #nosec G204 - explicit user command
+		cmd := exec.Command("bash", "-c", bashCmd)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
 			fmt.Printf("error: %v\n", err)
 		}
 	}
