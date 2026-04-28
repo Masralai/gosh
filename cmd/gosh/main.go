@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/Masralai/gosh/internal/handlers"
-	"github.com/chzyer/readline"
+	"github.com/reeflective/readline"
 	"github.com/urfave/cli/v3"
 )
 
@@ -35,7 +35,7 @@ func main() {
 			}
 		} else {
 			bashCmd := strings.Join(args, " ")
-			cmd := exec.Command("bash", "-c", bashCmd) // #nosec G204 G702
+			cmd := exec.Command("bash", "-c", bashCmd)
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
@@ -49,11 +49,24 @@ func main() {
 
 	printBanner()
 
-	rl, err := readline.New("gosh> ")
-	if err != nil {
-		panic(err)
+	rl := readline.NewShell()
+
+	rl.Prompt.Primary(func() string { 
+		return "gosh> "
+	})
+
+	rl.Config.Set("completion-auto", false)
+	rl.Config.Set("show-all-if-ambiguous", false)
+	rl.Config.Set("menu-complete-display-prefix", false)
+	
+	rl.Completer = func(line []rune, cursor int) readline.Completions {
+		input := string(line)
+		completions := handlers.GetCompletionsForLine(input)
+		if len(completions) == 0 {
+			return readline.Completions{}
+		}
+		return readline.CompleteValues(completions...)
 	}
-	defer rl.Close()
 
 	for {
 		line, err := rl.Readline()
@@ -64,8 +77,6 @@ func main() {
 		if text == "" {
 			continue
 		}
-		// #nosec G104 - ignore history save errors
-		_ = rl.SaveHistory(text)
 
 		fields := strings.Fields(text)
 		if len(fields) > 0 && fields[0] == "gosh" {
@@ -75,31 +86,29 @@ func main() {
 			continue
 		}
 
-		// ! prefix for gosh commands, default to bash
 		if strings.HasPrefix(fields[0], "!") {
 			cmd := strings.TrimPrefix(fields[0], "!")
 			argsWithPrefix := append([]string{"gosh", cmd}, fields[1:]...)
 			if err := root.Run(context.Background(), argsWithPrefix); err != nil {
 				fmt.Printf("error: %v\n", err)
 			}
+			handlers.GetHistoryManager().Add(text)
 			continue
 		}
 
-		// Default: forward to bash
 		bashCmd := strings.Join(fields, " ")
 		bashCmd = strings.TrimSpace(bashCmd)
 		if bashCmd == "" {
 			continue
 		}
-// #nosec G204 G702
 		cmd := exec.Command("bash", "-c", bashCmd)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
 			fmt.Printf("error: %v\n", err)
-			os.Exit(1)
 		}
+		handlers.GetHistoryManager().Add(text)
 	}
 }
 

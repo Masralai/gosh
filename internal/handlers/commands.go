@@ -19,3 +19,11 @@ func All() []*cli.Command {
 		Zip(), Unzip(),
 	}
 }
+
+func GetCommandNames() []string {
+	var names []string
+	for _, cmd := range All() {
+		names = append(names, cmd.Name)
+	}
+	return names
+}
