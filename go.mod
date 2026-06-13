@@ -3,11 +3,13 @@ module github.com/Masralai/gosh
 go 1.25.0
 
 require (
-	github.com/reeflective/readline v1.1.4
+	github.com/Masralai/gosh/internal/readline v0.0.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/tatsushid/go-fastping v0.0.0-20160109021039-d7bb493dee3e
 	github.com/urfave/cli/v3 v3.6.1
 )
+
+replace github.com/Masralai/gosh/internal/readline => ./internal/readline
 
 require (
 	github.com/cogentcore/readline v0.1.3 // indirect
