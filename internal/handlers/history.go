@@ -3,6 +3,7 @@ package handlers
 import (
 	"bufio"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -40,6 +41,8 @@ type HistoryManager struct {
 	items    []string
 	seen     map[string]bool
 	maxSize  int
+	recentDirs     []string
+	recentDirsFile string
 }
 
 func NewHistoryManager(maxSize int) *HistoryManager {
@@ -50,8 +53,11 @@ func NewHistoryManager(maxSize int) *HistoryManager {
 		items: make([]string, 0, maxSize),
 		seen:  make(map[string]bool),
 		maxSize: maxSize,
+		recentDirs: make([]string, 0),
 	}
+	h.recentDirsFile = getHomeDir() + "/.local/share/gosh/recent-dirs"
 	h.loadBashHistory()
+	h.loadRecentDirs()
 	return h
 }
 
@@ -186,4 +192,81 @@ func SearchHistoryForCompletion(input string, limit int) []string {
 func SearchHistoryPathsForCompletion(input string, limit int) []string {
 	h := GetHistoryManager()
 	return h.SearchPaths(input, limit)
+}
+
+// loadRecentDirs loads recent directories from file
+func (h *HistoryManager) loadRecentDirs() {
+	data, err := os.ReadFile(h.recentDirsFile)
+	if err != nil {
+		return
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	for _, line := range lines {
+		if line != "" {
+			h.recentDirs = append(h.recentDirs, line)
+		}
+	}
+}
+
+// AddDir adds a directory to the recent list (most recent first)
+func (h *HistoryManager) AddDir(path string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	// Move to front if exists
+	for i, d := range h.recentDirs {
+		if d == path {
+			h.recentDirs = append(h.recentDirs[:i], h.recentDirs[i+1:]...)
+			break
+		}
+	}
+
+	// Prepend new path
+	h.recentDirs = append([]string{path}, h.recentDirs...)
+
+	// Limit size
+	if len(h.recentDirs) > 100 {
+		h.recentDirs = h.recentDirs[:100]
+	}
+
+	// Persist to file
+	h.saveRecentDirs()
+}
+
+// GetRecentDirs returns recent directories filtered by prefix (matches basename)
+func (h *HistoryManager) GetRecentDirs(prefix string, max int) []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	var result []string
+	seen := make(map[string]bool)
+
+	for _, d := range h.recentDirs {
+		// Filter by prefix (match basename)
+		if prefix != "" {
+			base := filepath.Base(d)
+			if !strings.HasPrefix(base, prefix) {
+				continue
+			}
+		}
+
+		// Deduplicate
+		if !seen[d] {
+			seen[d] = true
+			result = append(result, d)
+		}
+
+		if len(result) >= max {
+			break
+		}
+	}
+
+	return result
+}
+
+// saveRecentDirs persists recent directories to file
+func (h *HistoryManager) saveRecentDirs() {
+	content := strings.Join(h.recentDirs, "\n") + "\n"
+	os.MkdirAll(filepath.Dir(h.recentDirsFile), 0755)
+	os.WriteFile(h.recentDirsFile, []byte(content), 0644)
 }

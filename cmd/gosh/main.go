@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/Masralai/gosh/internal/handlers"
-	"github.com/reeflective/readline"
+	readline "github.com/Masralai/gosh/internal/readline"
 	"github.com/urfave/cli/v3"
 )
 
@@ -51,22 +51,44 @@ func main() {
 
 	rl := readline.NewShell()
 
-	rl.Prompt.Primary(func() string { 
+	rl.Prompt.Primary(func() string {
 		return "gosh> "
+	})
+
+	// Set up inline ghost text (zsh-style autosuggestions)
+	rl.SetPostDisplay(func(line []rune) string {
+		input := string(line)
+		suggestion := handlers.GetSuggestionForLine(input)
+		if suggestion == "" {
+			return ""
+		}
+		// GetSuggestionForLine already returns the suffix after input
+		return suggestion
 	})
 
 	rl.Config.Set("completion-auto", false)
 	rl.Config.Set("show-all-if-ambiguous", false)
 	rl.Config.Set("menu-complete-display-prefix", false)
-	
+	rl.Config.Set("completion-show-hidden", false)
+	rl.Config.Set("disable-completion", true)
+
 	rl.Completer = func(line []rune, cursor int) readline.Completions {
-		input := string(line)
-		completions := handlers.GetCompletionsForLine(input)
-		if len(completions) == 0 {
-			return readline.Completions{}
-		}
-		return readline.CompleteValues(completions...)
+		return readline.Completions{}
 	}
+
+	// Bind TAB to insert ghost suggestion (only when ghost is shown)
+	rl.Keymap.Register(map[string]func(){
+		"accept-ghost": func() {
+			if rl.PostDisplay != nil {
+				line := []rune(*rl.Line())
+				ghost := rl.PostDisplay(line)
+				if ghost != "" {
+					rl.InsertText(ghost)
+				}
+			}
+		},
+	})
+	rl.Config.Bind("emacs", "\t", "accept-ghost", false)
 
 	for {
 		line, err := rl.Readline()
@@ -101,6 +123,27 @@ func main() {
 		if bashCmd == "" {
 			continue
 		}
+
+		// Handle cd natively to track directory changes
+		if fields[0] == "cd" {
+			target := ""
+			if len(fields) >= 2 {
+				target = fields[1]
+			}
+			if target == "" || target == "~" {
+				target = os.Getenv("HOME")
+			}
+			if err := os.Chdir(target); err == nil {
+				if newDir, err := os.Getwd(); err == nil {
+					handlers.GetHistoryManager().AddDir(newDir)
+				}
+			} else {
+				fmt.Printf("error: %v\n", err)
+			}
+			handlers.GetHistoryManager().Add(text)
+			continue
+		}
+
 		cmd := exec.Command("bash", "-c", bashCmd)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
