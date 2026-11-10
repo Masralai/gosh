@@ -52,7 +52,7 @@ func Grep() *cli.Command {
 			}
 
 			if c.Bool("r") {
-				return filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
+				return filepath.WalkDir(filename, func(path string, d fs.DirEntry, err error) error {
 					if err != nil {
 						return err
 					}
@@ -68,9 +68,8 @@ func Grep() *cli.Command {
 					if err != nil {
 						return nil
 					}
-					defer file.Close()
-
 					scanner := bufio.NewScanner(file)
+					scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 					lineNum := 0
 					for scanner.Scan() {
 						lineNum++
@@ -83,7 +82,13 @@ func Grep() *cli.Command {
 							fmt.Printf("%s:%d:%s\n", path, lineNum, line)
 						}
 					}
-					return scanner.Err()
+					scanErr := scanner.Err()
+					file.Close()
+					// A binary or oversized line is skipped, not fatal to the whole walk.
+					if scanErr != nil {
+						return nil
+					}
+					return nil
 				})
 			}
 
@@ -96,6 +101,7 @@ func Grep() *cli.Command {
 			defer file.Close()
 
 			scanner := bufio.NewScanner(file)
+			scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 			for scanner.Scan() {
 				line := scanner.Text()
 				matched := regObj.MatchString(line)

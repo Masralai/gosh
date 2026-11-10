@@ -1,7 +1,6 @@
 # GoSh (Go-Shell)
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/Masralai/gosh)](https://goreportcard.com/report/github.com/Masralai/gosh)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/Masralai/gosh)](https://github.com/Masralai/gosh)
 
 GoSh is a modular, interactive command-line interface built in Go. It provides a containerized environment for secure command execution, system monitoring, and file management.
@@ -18,7 +17,6 @@ GoSh is a modular, interactive command-line interface built in Go. It provides a
 - [Testing](#testing)
 - [Command Reference](#command-reference)
 - [Contributing](#contributing)
-- [License](#license)
 - [Acknowledgments](#acknowledgments)
 
 ---
@@ -55,10 +53,10 @@ gosh/
 
 ### Component Overview
 
-| Component | Description |
-|-----------|-------------|
-| `cmd/gosh/main.go` | Entry point, sets up urfave/cli and command loop |
-| `internal/handlers/` | All command implementations |
+| Component            | Description                                      |
+| -------------------- | ------------------------------------------------ |
+| `cmd/gosh/main.go`   | Entry point, sets up urfave/cli and command loop |
+| `internal/handlers/` | All command implementations                      |
 
 ### Command Dispatcher
 
@@ -75,22 +73,33 @@ The core engine is built on `urfave/cli/v3`. It maps user input to specific hand
 
 ## Installation
 
+### Install script (Linux, macOS, Windows via Git Bash)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Masralai/gosh/main/install.sh | sh
+```
+
+Installs to `~/.local/bin` after checking the release checksum. Set `GOSH_BIN` to change the directory.
+
 ### Native (Recommended)
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/Masralai/gosh
 cd gosh
 ```
 
-2. Build:
+1. Build:
+
 ```bash
 make build
 # or
 go build -o gosh ./cmd/gosh
 ```
 
-3. Run:
+1. Run:
+
 ```bash
 ./gosh
 ```
@@ -149,70 +158,64 @@ go test -race ./...
 
 ### File Operations
 
-| Command | Description | Flags |
-| :--- | :--- | :--- |
-| `ls` | List directory contents | `-a` (hidden), `-R` (recursive), `-S` (size) |
-| `cd` | Change directory | |
-| `pwd` | Print working directory | |
-| `mkdir` | Create directory | |
-| `rm` | Remove files/directories | `-rf` (recursive) |
-| `touch` | Create empty file | |
-| `mv` | Move/rename | |
-| `cp` | Copy file | |
-| `cat` | Display file contents | `-n` (line numbers), `-b` (non-blank), `-s` (squeeze) |
-| `info` | File information | |
-| `dir` | List directory | |
+| Command | Description              | Flags                                                 |
+| :------ | :----------------------- | :---------------------------------------------------- |
+| `ls`    | List directory contents  | `-a` (hidden), `-R` (recursive), `-S` (size)          |
+| `cd`    | Change directory         |                                                       |
+| `pwd`   | Print working directory  |                                                       |
+| `mkdir` | Create directory         |                                                       |
+| `rm`    | Remove files/directories | `-rf` (recursive)                                     |
+| `touch` | Create empty file        |                                                       |
+| `mv`    | Move/rename              |                                                       |
+| `cp`    | Copy file                |                                                       |
+| `cat`   | Display file contents    | `-n` (line numbers), `-b` (non-blank), `-s` (squeeze) |
+| `info`  | File information         |                                                       |
+| `dir`   | List directory           |                                                       |
 
 ### System Monitoring
 
-| Command | Description |
-| :--- | :--- |
-| `ps` | Process status |
-| `sys` | System information |
-| `mu` | Memory usage |
-| `du` | Disk usage |
-| `ut` | Uptime |
+| Command | Description        |
+| :------ | :----------------- |
+| `ps`    | Process status     |
+| `sys`   | System information |
+| `mu`    | Memory usage       |
+| `du`    | Disk usage         |
+| `ut`    | Uptime             |
 
 ### Text Processing
 
-| Command | Description | Flags |
-| :--- | :--- | :--- |
-| `grep` | Search text using regex | `-f` (ignore case), `-r` (recursive), `-v` (invert) |
-| `head` | Display first lines | `-n` (count) |
-| `tail` | Display last lines | `-n` (count) |
+| Command | Description             | Flags                                               |
+| :------ | :---------------------- | :-------------------------------------------------- |
+| `grep`  | Search text using regex | `-f` (ignore case), `-r` (recursive), `-v` (invert) |
+| `head`  | Display first lines     | `-n` (count)                                        |
+| `tail`  | Display last lines      | `-n` (count)                                        |
 
 ### Networking
 
 | Command | Description |
-| :--- | :--- |
-| `ping` | Ping a host |
+| :------ | :---------- |
+| `ping`  | Ping a host |
 
 ### Archives
 
-| Command | Description |
-| :--- | :--- |
-| `zip` | Create ZIP archive |
+| Command | Description         |
+| :------ | :------------------ |
+| `zip`   | Create ZIP archive  |
 | `unzip` | Extract ZIP archive |
 
 ### Shell Utilities
 
-| Command | Description | Flags |
-| :--- | :--- | :--- |
-| `echo` | Display text | `-n` (no newline), `-e` (escapes) |
-| `boom` | Explosive entrance | |
-| `exit` | Exit shell | |
+| Command | Description        | Flags                             |
+| :------ | :----------------- | :-------------------------------- |
+| `echo`  | Display text       | `-n` (no newline), `-e` (escapes) |
+| `boom`  | Explosive entrance |                                   |
+| `exit`  | Exit shell         |                                   |
 
 ---
 
 ## Contributing
 
 Contributions are welcome! Please submit a PR or open an issue.
-
----
-
-## License
-
-Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 ---
 

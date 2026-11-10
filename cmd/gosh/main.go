@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/Masralai/gosh/internal/handlers"
@@ -12,50 +14,34 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func main() {
-	args := os.Args[1:]
+var (
+	hostPath string
+	hostFlag string
+)
 
+func main() {
+	hostPath, hostFlag = findHostShell()
 	root := &cli.Command{
 		Name:     "gosh",
 		Usage:    "GoSh - interactive shell",
 		Commands: handlers.All(),
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return nil
-		},
 	}
 
-	if len(args) > 0 {
-		if len(args) > 0 && strings.HasPrefix(args[0], "!") {
-			cmd := strings.TrimPrefix(args[0], "!")
-			argsWithPrefix := append([]string{"gosh", cmd}, args[1:]...)
-			err := root.Run(context.Background(), argsWithPrefix)
-			if err != nil {
-				fmt.Printf("error: %v\n", err)
-				os.Exit(1)
-			}
-		} else {
-			bashCmd := strings.Join(args, " ")
-			cmd := exec.Command("bash", "-c", bashCmd) // #nosec G204 G702
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
-				fmt.Printf("error: %v\n", err)
-				os.Exit(1)
-			}
-		}
+	if args := os.Args[1:]; len(args) > 0 {
+		run(root, args)
 		return
 	}
 
 	printBanner()
 
-	rl, err := readline.New("gosh> ")
+	rl, err := readline.New(prompt())
 	if err != nil {
 		panic(err)
 	}
 	defer rl.Close()
 
 	for {
+		rl.SetPrompt(prompt())
 		line, err := rl.Readline()
 		if err != nil {
 			break
@@ -66,41 +52,110 @@ func main() {
 		}
 		// #nosec G104 - ignore history save errors
 		_ = rl.SaveHistory(text)
+		run(root, strings.Fields(text))
+	}
+}
 
-		fields := strings.Fields(text)
-		if len(fields) > 0 && fields[0] == "gosh" {
-			fields = fields[1:]
+func run(root *cli.Command, args []string) {
+	if len(args) == 0 {
+		return
+	}
+	if args[0] == "command" {
+		if len(args) == 1 {
+			fmt.Println("usage: command <cmd>")
+			return
 		}
-		if len(fields) == 0 {
-			continue
+		forward(strings.Join(args[1:], " "))
+		return
+	}
+	if isBuiltin(root, args[0]) {
+		if err := root.Run(context.Background(), append([]string{"gosh"}, args...)); err != nil {
+			fmt.Println("error:", err)
 		}
+		return
+	}
+	forward(strings.Join(args, " "))
+}
 
-		// ! prefix for gosh commands, default to bash
-		if strings.HasPrefix(fields[0], "!") {
-			cmd := strings.TrimPrefix(fields[0], "!")
-			argsWithPrefix := append([]string{"gosh", cmd}, fields[1:]...)
-			if err := root.Run(context.Background(), argsWithPrefix); err != nil {
-				fmt.Printf("error: %v\n", err)
+func isBuiltin(root *cli.Command, name string) bool {
+	for _, c := range root.Commands {
+		if c.Name == name {
+			return true
+		}
+		for _, a := range c.Aliases {
+			if a == name {
+				return true
 			}
-			continue
-		}
-
-		// Default: forward to bash
-		bashCmd := strings.Join(fields, " ")
-		bashCmd = strings.TrimSpace(bashCmd)
-		if bashCmd == "" {
-			continue
-		}
-// #nosec G204 G702
-		cmd := exec.Command("bash", "-c", bashCmd)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("error: %v\n", err)
-			os.Exit(1)
 		}
 	}
+	return false
+}
+
+// findHostShell picks the shell that runs anything GoSh does not implement.
+// shortcut: GOSH_SHELL is assumed to accept -c; cmd.exe is the only /C default.
+func findHostShell() (string, string) {
+	if s := os.Getenv("GOSH_SHELL"); s != "" {
+		return s, "-c"
+	}
+	if p, err := exec.LookPath("bash"); err == nil && exec.Command(p, "-c", "exit 0").Run() == nil {
+		return p, "-c"
+	}
+	if p, err := exec.LookPath("sh"); err == nil {
+		return p, "-c"
+	}
+	if runtime.GOOS == "windows" {
+		if p, err := exec.LookPath("cmd"); err == nil {
+			return p, "/C"
+		}
+	}
+	return "", ""
+}
+
+func forward(line string) {
+	if hostPath == "" {
+		fmt.Println("error: no host shell found (set GOSH_SHELL)")
+		return
+	}
+	cmd := exec.Command(hostPath, hostFlag, line) // #nosec G204 G702 - running user input is the point
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		// A non-zero exit is the command's result, not a GoSh failure.
+		if _, ok := err.(*exec.ExitError); !ok {
+			fmt.Println("error:", err)
+		}
+	}
+}
+
+func prompt() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "gosh ❯ "
+	}
+	home, _ := os.UserHomeDir()
+	return shortPath(wd, home) + " ❯ "
+}
+
+func shortPath(wd, home string) string {
+	p := filepath.ToSlash(wd)
+	if home != "" {
+		rel, err := filepath.Rel(home, wd)
+		if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+			if rel == "." {
+				p = "~"
+			} else {
+				p = "~/" + filepath.ToSlash(rel)
+			}
+		}
+	}
+	if len(p) > 24 {
+		parts := strings.Split(strings.TrimPrefix(p, "/"), "/")
+		if len(parts) >= 2 {
+			p = ".../" + strings.Join(parts[len(parts)-2:], "/")
+		}
+	}
+	return p
 }
 
 func printBanner() {
@@ -112,6 +167,6 @@ func printBanner() {
       /|\/|\/|\ /|\   |[]| [] |   /|\/|\ /|\/|\/|\ /|\/|\
 
 	Welcome to GoSh
-	To get started: {command} -h or {command}
+	Type a command, or command <cmd> for the host shell.
 	  `)
 }
