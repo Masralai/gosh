@@ -1,9 +1,3 @@
 *.exe
 .env
 gosh*
-.commandcode/
-site/.taste-skill/
-site/shots/
-site/node_modules/
-site/.next/
-site/out/
