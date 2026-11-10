@@ -83,7 +83,7 @@ func Grep() *cli.Command {
 						}
 					}
 					scanErr := scanner.Err()
-					file.Close()
+					_ = file.Close()
 					// A binary or oversized line is skipped, not fatal to the whole walk.
 					if scanErr != nil {
 						return nil

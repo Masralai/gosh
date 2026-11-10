@@ -97,7 +97,7 @@ func findHostShell() (string, string) {
 	if s := os.Getenv("GOSH_SHELL"); s != "" {
 		return s, "-c"
 	}
-	if p, err := exec.LookPath("bash"); err == nil && exec.Command(p, "-c", "exit 0").Run() == nil {
+	if p, err := exec.LookPath("bash"); err == nil && exec.Command(p, "-c", "exit 0").Run() == nil { // #nosec G204 - fixed argument, probed binary from LookPath
 		return p, "-c"
 	}
 	if p, err := exec.LookPath("sh"); err == nil {
