@@ -6,13 +6,13 @@ import "github.com/urfave/cli/v3"
 func All() []*cli.Command {
 	return []*cli.Command{
 		// Shell utilities
-		Cli(), Boom(), Echo(), Cd(), Pwd(), Exit(),
+		Cli(), Boom(), Echo(), Clear(), Help(), History(), Env(), Which(), Cd(), Pwd(), Exit(),
 		// File operations
-		Ls(), Mkdir(), Rm(), Touch(), Mv(), Cp(), Dir(), Cat(), Info(),
+		Ls(), Mkdir(), Rm(), Touch(), Mv(), Cp(), Dir(), Cat(), Info(), Find(),
 		// System monitoring
 		Ps(), Ut(), Sys(), Mu(), Du(), Kill(),
 		// Text processing
-		Grep(), Head(), Tail(),
+		Grep(), Head(), Tail(), Wc(), SortCmd(),
 		// Networking
 		Ping(),
 		// Archive

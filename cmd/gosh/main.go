@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/Masralai/gosh/internal/handlers"
@@ -34,7 +35,15 @@ func main() {
 
 	printBanner()
 
-	rl, err := readline.New(prompt())
+	histFile := historyFilePath()
+	if histFile != "" {
+		_ = os.MkdirAll(filepath.Dir(histFile), 0o755)
+	}
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:       prompt(),
+		HistoryFile:  histFile,
+		AutoComplete: builtinCompleter(root),
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -52,11 +61,20 @@ func main() {
 		}
 		// #nosec G104 - ignore history save errors
 		_ = rl.SaveHistory(text)
-		run(root, strings.Fields(text))
+		args, perr := parseCommandLine(text)
+		if perr != nil {
+			fmt.Println("error:", perr)
+			continue
+		}
+		runArgs(root, args, text)
 	}
 }
 
 func run(root *cli.Command, args []string) {
+	runArgs(root, args, strings.Join(args, " "))
+}
+
+func runArgs(root *cli.Command, args []string, line string) {
 	if len(args) == 0 {
 		return
 	}
@@ -65,7 +83,11 @@ func run(root *cli.Command, args []string) {
 			fmt.Println("usage: command <cmd>")
 			return
 		}
-		forward(strings.Join(args[1:], " "))
+		if strings.TrimSpace(line) != "" {
+			forward(strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "command")))
+		} else {
+			forward(strings.Join(args[1:], " "))
+		}
 		return
 	}
 	if isBuiltin(root, args[0]) {
@@ -74,7 +96,71 @@ func run(root *cli.Command, args []string) {
 		}
 		return
 	}
-	forward(strings.Join(args, " "))
+	if strings.TrimSpace(line) != "" {
+		forward(line)
+	} else {
+		forward(strings.Join(args, " "))
+	}
+}
+
+func parseCommandLine(line string) ([]string, error) {
+	args := []string{}
+	var current strings.Builder
+	inSingle, inDouble := false, false
+	escaped := false
+	tokenStarted := false
+	for i := 0; i < len(line); i++ {
+		c := line[i]
+		if escaped {
+			current.WriteByte(c)
+			escaped = false
+			tokenStarted = true
+			continue
+		}
+		switch {
+		case c == '\\' && !inSingle:
+			if inDouble {
+				if i+1 < len(line) {
+					next := line[i+1]
+					if next == '"' || next == '\\' {
+						escaped = true
+						tokenStarted = true
+						continue
+					}
+				}
+				current.WriteByte(c)
+				tokenStarted = true
+			} else {
+				escaped = true
+				tokenStarted = true
+			}
+		case c == '\'' && !inDouble:
+			inSingle = !inSingle
+			tokenStarted = true
+		case c == '"' && !inSingle:
+			inDouble = !inDouble
+			tokenStarted = true
+		case (c == ' ' || c == '\t' || c == '\n' || c == '\r') && !inSingle && !inDouble:
+			if tokenStarted {
+				args = append(args, current.String())
+				current.Reset()
+				tokenStarted = false
+			}
+		default:
+			current.WriteByte(c)
+			tokenStarted = true
+		}
+	}
+	if escaped {
+		current.WriteByte('\\')
+	}
+	if inSingle || inDouble {
+		return nil, fmt.Errorf("unterminated quote")
+	}
+	if tokenStarted {
+		args = append(args, current.String())
+	}
+	return args, nil
 }
 
 func isBuiltin(root *cli.Command, name string) bool {
@@ -169,4 +255,45 @@ func printBanner() {
 	Welcome to GoSh
 	Type a command, or command <cmd> for the host shell.
 	  `)
+}
+
+func historyFilePath() string {
+	if p := os.Getenv("GOSH_HISTORY"); p != "" {
+		return p
+	}
+	if dir, err := os.UserConfigDir(); err == nil && dir != "" {
+		return filepath.Join(dir, "gosh", "history")
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		return filepath.Join(home, ".gosh_history")
+	}
+	return ""
+}
+
+func builtinCompletionNames(root *cli.Command) []string {
+	seen := map[string]bool{}
+	var names []string
+	for _, c := range root.Commands {
+		if c.Name != "" && !seen[c.Name] {
+			seen[c.Name] = true
+			names = append(names, c.Name)
+		}
+		for _, a := range c.Aliases {
+			if a != "" && !seen[a] {
+				seen[a] = true
+				names = append(names, a)
+			}
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+func builtinCompleter(root *cli.Command) readline.AutoCompleter {
+	items := builtinCompletionNames(root)
+	pcs := make([]readline.PrefixCompleterInterface, 0, len(items))
+	for _, name := range items {
+		pcs = append(pcs, readline.PcItem(name))
+	}
+	return readline.NewPrefixCompleter(pcs...)
 }
