@@ -26,9 +26,9 @@ GoSh is a modular, interactive command-line interface built in Go. It provides a
 - **Robust Command Engine:** Utilizes `urfave/cli/v3` for sophisticated argument parsing and flag management.
 - **Enhanced Security:** Path traversal guards, directory traversal checks, and confirmation prompts for destructive actions.
 - **Portability:** Works natively or containerized with Docker.
-- **Interactive Experience:** Integrated command scanning provides a fluid terminal interaction.
+- **Interactive Experience:** Readline-based REPL with quote-aware argument parsing for builtins, persistent command history, tab completion for builtin command names/aliases, and host-shell fallback for unknown commands.
 - **System Monitoring:** Built-in tools for monitoring CPU, memory, disk usage, and process management.
-- **Network Utilities:** Integrated network diagnostic tools including ping functionality.
+- **Network Utilities:** Integrated network diagnostic tools including ping functionality (ICMP ping may require elevated privileges on some systems).
 - **Archive Management:** Support for creating and extracting ZIP archives with security checks.
 - **Security Scanned:** Code undergoes gosec security analysis.
 
@@ -156,60 +156,96 @@ go test -race ./...
 
 ## Command Reference
 
+### Shell Utilities
+
+| Command   | Description                                      | Flags / Notes |
+| :-------- | :----------------------------------------------- | :------------ |
+| `help`    | Show help for built-in commands                  | `help [command]` |
+| `history` | Display or clear persisted command history       | `-c` (clear history) |
+| `env`     | Display environment variables                    | `env [name...]` |
+| `which`   | Locate a command (GoSh builtin/alias or host PATH) | `which <name> [name...]` |
+| `echo`    | Display a line of text                           | `-n` (no newline), `-e` (escapes); prints all arguments |
+| `clear`   | Clear the terminal screen                        |               |
+| `cd`      | Change directory                                 | `cd <path>`   |
+| `pwd`     | Print working directory                          |               |
+| `boom`    | Explosive entrance                               |               |
+| `exit`    | Exit shell                                       |               |
+
 ### File Operations
 
-| Command | Description              | Flags                                                 |
-| :------ | :----------------------- | :---------------------------------------------------- |
-| `ls`    | List directory contents  | `-a` (hidden), `-R` (recursive), `-S` (size)          |
-| `cd`    | Change directory         |                                                       |
-| `pwd`   | Print working directory  |                                                       |
-| `mkdir` | Create directory         |                                                       |
-| `rm`    | Remove files/directories | `-rf` (recursive)                                     |
-| `touch` | Create empty file        |                                                       |
-| `mv`    | Move/rename              |                                                       |
-| `cp`    | Copy file                |                                                       |
-| `cat`   | Display file contents    | `-n` (line numbers), `-b` (non-blank), `-s` (squeeze) |
-| `info`  | File information         |                                                       |
-| `dir`   | List directory           |                                                       |
+| Command | Description                                              | Flags / Notes |
+| :------ | :------------------------------------------------------- | :------------ |
+| `ls`    | List directory contents                                  | `-a` (hidden), `-l` (long), `-h` (human sizes with `-l`), `-R` (recursive), `-S` (sort by size), `-t` (sort by mtime) |
+| `mkdir` | Create directories                                       | `-p` (create parents; no error if exists) |
+| `rm`    | Remove files or directories                              | `-r`/`-R` (recursive), `-f` (force, ignore missing, no prompt). `rm -rf` is Unix-like (no confirmation prompt). |
+| `touch` | Create file or update its timestamp (no truncate)        | `touch <file> [file...]` |
+| `mv`    | Move/rename file or directory                            | `mv <source> <destination>` |
+| `cp`    | Copy files and directories                               | `-r`/`-R` (recursive directory copy) |
+| `dir`   | Display directory contents (human-readable)              | `dir [path]` |
+| `cat`   | Display file contents (supports multiple files)          | `-n` (number all lines), `-b` (number non-blank, overrides `-n`), `-s` (squeeze blank lines) |
+| `info`  | Display file information                                 | `info <path>` |
+| `find`  | Search for files by name pattern (basic recursive search) | `find <path> -name <pattern>` |
 
 ### System Monitoring
 
-| Command | Description        |
-| :------ | :----------------- |
-| `ps`    | Process status     |
-| `sys`   | System information |
-| `mu`    | Memory usage       |
-| `du`    | Disk usage         |
-| `ut`    | Uptime             |
+| Command | Description                        |
+| :------ | :--------------------------------- |
+| `ps`    | Display process status             |
+| `sys`   | Display system information         |
+| `mu`    | Display memory usage               |
+| `du`    | Display disk usage for a path      |
+| `ut`    | Display system uptime              |
+| `kill`  | Terminate a process by PID         |
 
 ### Text Processing
 
-| Command | Description             | Flags                                               |
-| :------ | :---------------------- | :-------------------------------------------------- |
-| `grep`  | Search text using regex | `-f` (ignore case), `-r` (recursive), `-v` (invert) |
-| `head`  | Display first lines     | `-n` (count)                                        |
-| `tail`  | Display last lines      | `-n` (count)                                        |
+| Command | Description                                | Flags / Notes |
+| :------ | :----------------------------------------- | :------------ |
+| `grep`  | Search for a pattern in files              | `-i` (ignore case, primary), `-n` (line numbers), `-r` (recursive), `-v` (invert). `-f` is kept as a compatibility alias for ignore-case (not pattern-file). |
+| `head`  | Display the beginning of a file            | `-n <lines>` (default 10) |
+| `tail`  | Display the end of a file                  | `-n <lines>` (default 10) |
+| `wc`    | Count lines, words, and bytes              | `-l`, `-w`, `-c` (default: all three) |
+| `sort`  | Sort lines of text                         | `-r` (reverse) |
 
 ### Networking
 
 | Command | Description |
 | :------ | :---------- |
-| `ping`  | Ping a host |
+| `ping`  | Send ICMP echo requests to a host (may require elevated privileges on some systems; GoSh reports clear errors when unavailable) |
 
 ### Archives
 
-| Command | Description         |
-| :------ | :------------------ |
-| `zip`   | Create ZIP archive  |
-| `unzip` | Extract ZIP archive |
+| Command | Description         | Usage / Notes                                      |
+| :------ | :------------------ | :------------------------------------------------- |
+| `zip`   | Create a ZIP archive from files | `zip <archive> <file1> [file2] ...` (adds `.zip` if omitted) |
+| `unzip` | Extract files from a ZIP archive | `unzip <archive.zip> <destination>`               |
 
-### Shell Utilities
+---
 
-| Command | Description        | Flags                             |
-| :------ | :----------------- | :-------------------------------- |
-| `echo`  | Display text       | `-n` (no newline), `-e` (escapes) |
-| `boom`  | Explosive entrance |                                   |
-| `exit`  | Exit shell         |                                   |
+## Notes on Behavior Changes
+
+**Interactive/QOL milestone**
+- Interactive builtin input now uses quote-aware argument parsing (supports quoted paths/arguments with spaces).
+- Command history is persisted across sessions (configurable via `GOSH_HISTORY`; defaults to a per-user config/history location).
+- Tab completion suggests builtin command names and aliases (not file/path arguments).
+- `ls` implements `-R` (recursive) and `-S` (sort by size) as advertised.
+- `cat -b` numbers non-blank lines (and overrides `-n` when both are provided).
+- `echo` prints all provided arguments.
+- `dir` prints a human-readable listing (not internal structures) and accepts an optional path.
+- `kill` terminates a process by PID (`kill <pid>`).
+- `touch` updates timestamps without truncating existing files.
+- `zip` avoids adding a duplicate `.zip` extension when one is already provided.
+- `ping` keeps ICMP-based behavior but reports clearer cross-platform/privilege-related errors (ICMP may require elevation on some systems).
+
+**Broadening milestone**
+- Added builtins: `help`, `history` (with `-c`), `env`, `which`, `find` (basic `-name`), `wc`, and `sort`.
+- `ls` adds `-l` (long listing), `-h` (human-readable sizes with `-l`), and `-t` (sort by modification time).
+- `mkdir` adds `-p` to create parent directories and succeed if the directory already exists.
+- `cp` adds `-r`/`-R` for recursive directory copies.
+- `rm` now uses familiar Unix-like semantics: `-r`/`-R` removes directories recursively and `-f` forces removal (ignores missing targets, no prompts). `rm -rf` no longer prompts for confirmation (behavior change from the previous milestone).
+- `grep` adds `-i` (primary ignore-case) and `-n` (line numbers). `-f` is kept as a compatibility alias for ignore-case in this milestone (not pattern-file behavior).
+- `cat` accepts multiple files and applies `-n`/`-b`/`-s` consistently.
+- `which` reports GoSh builtins/aliases and best-effort host PATH resolution.
 
 ---
 
@@ -224,3 +260,4 @@ Contributions are welcome! Please submit a PR or open an issue.
 - [urfave/cli](https://github.com/urfave/cli) - CLI framework
 - [gopsutil](https://github.com/shirou/gopsutil) - Cross-platform system monitoring
 - [fastping](https://github.com/tatsushid/go-fastping) - Network diagnostics
+- [readline](https://github.com/chzyer/readline) - Interactive line editing, history, and completion support
