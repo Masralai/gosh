@@ -435,7 +435,8 @@ func Touch() *cli.Command {
 				_, err := os.Stat(name)
 				if err != nil {
 					if os.IsNotExist(err) {
-						f, cerr := os.OpenFile(name, os.O_CREATE|os.O_WRONLY, 0o644)
+						// #nosec G304,G302 -- touch creates user-specified file path
+						f, cerr := os.OpenFile(name, os.O_CREATE|os.O_WRONLY, 0o600)
 						if cerr != nil {
 							return fmt.Errorf("failed to create file: %v", cerr)
 						}
@@ -509,12 +510,14 @@ func copyFile(src, dest string, perm os.FileMode) error {
 	if dInfo, derr := os.Stat(dest); derr == nil && dInfo.IsDir() {
 		dest = filepath.Join(dest, filepath.Base(src))
 	}
+	// #nosec G304 -- source/dest paths are user-specified cp operands
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("failed to open source: %v", err)
 	}
 	defer srcFile.Close()
 
+	// #nosec G304 -- destination path is user-specified cp operand
 	destFile, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
 	if err != nil {
 		return fmt.Errorf("failed to create destination: %v", err)
@@ -615,6 +618,7 @@ func Cat() *cli.Command {
 			lineNum := 0
 			prevBlank := false
 			for _, name := range c.Args().Slice() {
+				// #nosec G304 -- file paths are user-specified cat operands
 				f, err := os.Open(name)
 				if err != nil {
 					return fmt.Errorf("failed to open file: %v", err)

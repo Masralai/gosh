@@ -37,7 +37,7 @@ func main() {
 
 	histFile := historyFilePath()
 	if histFile != "" {
-		_ = os.MkdirAll(filepath.Dir(histFile), 0o755)
+		_ = os.MkdirAll(filepath.Dir(histFile), 0o750)
 	}
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:       prompt(),

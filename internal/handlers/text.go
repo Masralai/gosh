@@ -113,6 +113,7 @@ func Grep() *cli.Command {
 				})
 			}
 
+			// #nosec G304 -- file path is user-specified grep target
 			file, err := os.Open(filename)
 			if err != nil {
 				return fmt.Errorf("failed to open file: %v", err)
@@ -158,6 +159,7 @@ func Head() *cli.Command {
 			if c.Args().Len() == 0 {
 				return fmt.Errorf("usage: head [-n <lines>] <file>")
 			}
+			// #nosec G304 -- file path is user-specified head target
 			file, err := os.Open(c.Args().Get(0))
 			if err != nil {
 				return fmt.Errorf("failed to open file: %v", err)
@@ -196,6 +198,7 @@ func Tail() *cli.Command {
 			if c.Args().Len() == 0 {
 				return fmt.Errorf("usage: tail [-n <lines>] <file>")
 			}
+			// #nosec G304 -- file path is user-specified tail target
 			file, err := os.Open(c.Args().Get(0))
 			if err != nil {
 				return fmt.Errorf("failed to open file: %v", err)
@@ -258,6 +261,7 @@ func Wc() *cli.Command {
 }
 
 func wcFile(name string) (int, int, int, error) {
+	// #nosec G304 -- file path is user-specified wc target
 	f, err := os.Open(name)
 	if err != nil {
 		return 0, 0, 0, err
@@ -314,6 +318,7 @@ func SortCmd() *cli.Command {
 			if c.Args().Len() == 0 {
 				return fmt.Errorf("usage: sort [-r] <file>")
 			}
+			// #nosec G304 -- file path is user-specified sort target
 			file, err := os.Open(c.Args().Get(0))
 			if err != nil {
 				return fmt.Errorf("failed to open file: %v", err)

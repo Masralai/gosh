@@ -100,14 +100,15 @@ func History() *cli.Command {
 				return fmt.Errorf("history file path not available")
 			}
 			if c.Bool("c") {
-				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 					return fmt.Errorf("failed to prepare history file: %v", err)
 				}
-				if err := os.WriteFile(path, []byte{}, 0o644); err != nil {
+				if err := os.WriteFile(path, []byte{}, 0o600); err != nil {
 					return fmt.Errorf("failed to clear history: %v", err)
 				}
 				return nil
 			}
+			// #nosec G304 -- history path from user config/env
 			data, err := os.ReadFile(path)
 			if err != nil {
 				if os.IsNotExist(err) {

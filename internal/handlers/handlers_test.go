@@ -113,17 +113,10 @@ func TestCatNumberNonBlankOverridesN(t *testing.T) {
 	}
 	// blank line should be present but unnumbered
 	lines := strings.Split(strings.ReplaceAll(out, "\r\n", "\n"), "\n")
-	foundBlankUnnumbered := false
 	for _, l := range lines {
-		if l == "" {
-			foundBlankUnnumbered = true
-		}
 		if strings.Contains(l, "     3") {
 			t.Fatalf("cat -b should not number blank as 3: %q", out)
 		}
-	}
-	if !foundBlankUnnumbered {
-		// allow if representation differs, but content should have a blank line between 1 and 2
 	}
 }
 

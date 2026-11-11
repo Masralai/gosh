@@ -27,6 +27,7 @@ func Zip() *cli.Command {
 				archiveName += ".zip"
 			}
 
+			// #nosec G304 -- archive path is user-specified
 			archive, err := os.Create(archiveName)
 			if err != nil {
 				return fmt.Errorf("failed to create zip archive: %v", err)

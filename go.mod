@@ -1,6 +1,6 @@
 module github.com/Masralai/gosh
 
-go 1.25
+go 1.26.9
 
 require (
 	github.com/chzyer/readline v1.5.1

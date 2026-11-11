@@ -144,16 +144,16 @@ func Kill() *cli.Command {
 				return fmt.Errorf("usage: kill <pid>")
 			}
 			pidArg := c.Args().Get(0)
-			pid, err := strconv.Atoi(pidArg)
-			if err != nil || pid <= 0 {
+			pid64, err := strconv.ParseInt(pidArg, 10, 32)
+			if err != nil || pid64 <= 0 {
 				return fmt.Errorf("invalid pid %q: must be a positive integer", pidArg)
 			}
-			p, err := process.NewProcess(int32(pid))
+			p, err := process.NewProcess(int32(pid64))
 			if err != nil {
-				return fmt.Errorf("process %d not found: %v", pid, err)
+				return fmt.Errorf("process %d not found: %v", pid64, err)
 			}
 			if err := p.Kill(); err != nil {
-				return fmt.Errorf("failed to terminate process %d: %v", pid, err)
+				return fmt.Errorf("failed to terminate process %d: %v", pid64, err)
 			}
 			return nil
 		},
